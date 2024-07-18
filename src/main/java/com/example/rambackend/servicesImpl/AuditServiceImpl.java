@@ -30,7 +30,7 @@ public class AuditServiceImpl implements AuditService {
 
     @Override
     public void deleteAuditById(Long id) {
-
+        auditRepository.deleteById(id);
     }
 
     @Override
