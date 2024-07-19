@@ -8,28 +8,21 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class Audit {
+public class Reponse {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String escaleVille;
-    private LocalDate dateProgramme;
-    private LocalDate dateDebut;
-    private LocalDate dateFin;
-    private boolean archivee;
-    private String nomFormulaire;
-    private String rapportAudit;
-    private String rapportAction;
+    private boolean reps;
 
     /*
-    @OneToMany(mappedBy = "audit", fetch = FetchType.LAZY)
-    private List<Reponse> reponseList  = new ArrayList<>();
+    @ManyToOne
+    private Audit audit;
+    @ManyToOne
+    private Regle regle;
      */
 
 }
