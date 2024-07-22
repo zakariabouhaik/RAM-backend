@@ -24,17 +24,17 @@ public class AuditServiceImpl implements AuditService {
     }
 
     @Override
-    public Audit getAuditById(Long id) {
+    public Audit getAuditById(String id) {
         return auditRepository.findById(id).get();
     }
 
     @Override
-    public void deleteAuditById(Long id) {
+    public void deleteAuditById(String id) {
         auditRepository.deleteById(id);
     }
 
     @Override
-    public Audit updateAudit(Long id, Audit audit) {
+    public Audit updateAudit(String id, Audit audit) {
         Audit currAudit = getAuditById(id);
         currAudit.setEscaleVille(audit.getEscaleVille());
         currAudit.setDateProgramme(audit.getDateProgramme());

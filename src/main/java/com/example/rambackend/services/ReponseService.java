@@ -8,7 +8,7 @@ import java.util.List;
 public interface ReponseService {
     Reponse saveReponse(Reponse reponse);
     List<Reponse> getAllReponses();
-    Reponse getReponseById(Long id);
-    Reponse updateReponse(Long id, Reponse reponse);
-    void deleteReponseById(Long id);
+    Reponse getReponseById(String id);
+    Reponse updateReponse(String id, Reponse reponse);
+    void deleteReponseById(String id);
 }

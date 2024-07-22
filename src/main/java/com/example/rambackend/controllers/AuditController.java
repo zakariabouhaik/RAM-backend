@@ -25,17 +25,17 @@ public class AuditController {
     }
 
     @GetMapping("/{id}")
-    public Audit getAudit(@PathVariable Long id) {
+    public Audit getAudit(@PathVariable String id) {
         return auditService.getAuditById(id);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteAudit(@PathVariable Long id) {
+    public void deleteAudit(@PathVariable String id) {
         auditService.deleteAuditById(id);
     }
 
     @PutMapping("/{id}")
-    public Audit editAudit(@PathVariable Long id, @RequestBody Audit audit) {
+    public Audit editAudit(@PathVariable String id, @RequestBody Audit audit) {
         return auditService.updateAudit(id, audit);
     }
 
