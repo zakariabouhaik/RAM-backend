@@ -12,8 +12,5 @@ public class Regle {
         private String id;
         private String description;
 
-        /*
-        @OneToMany(mappedBy = "regle", fetch = FetchType.LAZY)
-        private List<Reponse> reponseList  = new ArrayList<>();
-         */
+
 }
