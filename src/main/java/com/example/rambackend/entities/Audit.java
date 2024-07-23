@@ -7,17 +7,14 @@ import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
-
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
-@Entity
+@Document
 public class Audit {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
     private String escaleVille;
     private LocalDate dateProgramme;
     private LocalDate dateDebut;

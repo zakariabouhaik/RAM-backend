@@ -8,19 +8,21 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 @Document
-public class Reponse {
+public class Section {
     @Id
-
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private String id;
-    private boolean reps;
+    private String description;
 
-    /*
-    @ManyToOne
-    private Audit audit;
-    @ManyToOne
-    private Regle regle;
-     */
-
+    @Field("regleIds")
+    private List<String> regleIds = new ArrayList<>();
 }

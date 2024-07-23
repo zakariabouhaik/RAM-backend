@@ -23,16 +23,16 @@ public class ReponseController {
     }
 
     @GetMapping("/{id}")
-    public Reponse getReponse(@PathVariable Long id) {
+    public Reponse getReponse(@PathVariable String id) {
         return reponseService.getReponseById(id);
     }
     @DeleteMapping("/{id}")
-    public void deleteReponse(@PathVariable Long id) {
+    public void deleteReponse(@PathVariable String id) {
         reponseService.deleteReponseById(id);
     }
 
     @PutMapping("/{id}")
-    public Reponse editReponse(@PathVariable Long id, @RequestBody Reponse reponse) {
+    public Reponse editReponse(@PathVariable String id, @RequestBody Reponse reponse) {
         return reponseService.updateReponse(id, reponse);
     }
 

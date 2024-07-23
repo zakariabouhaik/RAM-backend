@@ -26,17 +26,17 @@ public class RegleController {
     }
 
     @GetMapping("/{id}")
-    public Regle getRegle(@PathVariable Long id) {
+    public Regle getRegle(@PathVariable String id) {
         return regleService.getRegleById(id);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteRegle(@PathVariable Long id) {
+    public void deleteRegle(@PathVariable String id) {
         regleService.deleteRegleById(id);
     }
 
     @PutMapping("/{id}")
-    public Regle editRegle(@PathVariable Long id, @RequestBody Regle regle) {
+    public Regle editRegle(@PathVariable String id, @RequestBody Regle regle) {
         return regleService.updateRegle(id, regle);
     }
 }

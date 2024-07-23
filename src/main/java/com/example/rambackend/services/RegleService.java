@@ -8,7 +8,7 @@ import java.util.List;
 public interface RegleService {
     Regle saveRegle(Regle regle);
     List<Regle> getAllRegles();
-    Regle getRegleById(Long id);
-    Regle updateRegle(Long id, Regle regle);
-    void deleteRegleById(Long id);
+    Regle getRegleById(String id);
+    Regle updateRegle(String id, Regle regle);
+    void deleteRegleById(String id);
 }

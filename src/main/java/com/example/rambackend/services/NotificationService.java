@@ -11,9 +11,9 @@ public interface NotificationService {
 
     Notification saveNotification(Notification notification);
     List<Notification> getAllNotifications();
-    Notification getNotificationById(Long id);
-    void deleteNotificationById(Long id);
-    Notification updateNotification(Long id, Notification notification);
+    Notification getNotificationById(String id);
+    void deleteNotificationById(String id);
+    Notification updateNotification(String id, Notification notification);
 
 
 }

@@ -9,8 +9,8 @@ import java.util.UUID;
 @Service
 public interface UserService {
     Utilisateur createUtilisateur(Utilisateur user);
-    Utilisateur getUtilisateurById(UUID id);
+    Utilisateur getUtilisateurById(String id);
     List<Utilisateur> getAllUtilisateurs();
-    Utilisateur updateUtilisateur(UUID id, Utilisateur utilisateur);
-    void deleteUtilisateur(UUID id);
+    Utilisateur updateUtilisateur(String id, Utilisateur utilisateur);
+    void deleteUtilisateur(String id);
 }

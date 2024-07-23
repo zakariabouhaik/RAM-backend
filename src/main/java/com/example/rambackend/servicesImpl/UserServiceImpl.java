@@ -21,7 +21,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Utilisateur getUtilisateurById(UUID id) {
+    public Utilisateur getUtilisateurById(String id) {
         return userRepository.findById(id).orElse(null);
     }
 
@@ -31,7 +31,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Utilisateur updateUtilisateur(UUID id, Utilisateur utilisateurDetails) {
+    public Utilisateur updateUtilisateur(String id, Utilisateur utilisateurDetails) {
         return userRepository.findById(id)
                 .map(utilisateur -> {
                     if (utilisateurDetails.getNom_complet() != null) {
@@ -57,7 +57,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void deleteUtilisateur(UUID id) {
+    public void deleteUtilisateur(String id) {
         userRepository.deleteById(id);
     }
 }

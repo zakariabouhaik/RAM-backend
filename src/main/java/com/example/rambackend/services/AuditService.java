@@ -9,9 +9,9 @@ import java.util.List;
 public interface AuditService {
     Audit saveAudit(Audit audit);
     List<Audit> getAllAudits();
-    Audit getAuditById(Long id);
-    void deleteAuditById(Long id);
-    Audit updateAudit(Long id, Audit audit);
+    Audit getAuditById(String id);
+    void deleteAuditById(String id);
+    Audit updateAudit(String id, Audit audit);
 
 
 

@@ -22,19 +22,19 @@ public class ReponseServiceImpl implements ReponseService {
     }
 
     @Override
-    public Reponse getReponseById(Long id) {
+    public Reponse getReponseById(String id) {
         return reponseRepository.findById(id).get();
     }
 
     @Override
-    public Reponse updateReponse(Long id, Reponse reponse) {
+    public Reponse updateReponse(String id, Reponse reponse) {
         Reponse currReponse = getReponseById(id);
         currReponse.setReps(reponse.isReps());
         return reponseRepository.save(currReponse);
     }
 
     @Override
-    public void deleteReponseById(Long id) {
+    public void deleteReponseById(String id) {
         if (reponseRepository.existsById(id)) {
             reponseRepository.deleteById(id);
         }

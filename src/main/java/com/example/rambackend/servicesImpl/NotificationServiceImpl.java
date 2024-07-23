@@ -25,17 +25,17 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public Notification getNotificationById(Long id) {
+    public Notification getNotificationById(String id) {
         return notificationRepository.findById(id).orElse(null);
     }
 
     @Override
-    public void deleteNotificationById(Long id) {
+    public void deleteNotificationById(String id) {
         notificationRepository.deleteById(id);
     }
 
     @Override
-    public Notification updateNotification(Long id, Notification notification) {
+    public Notification updateNotification(String id, Notification notification) {
         return notificationRepository.findById(id)
 
                 .map(notification1 -> {
