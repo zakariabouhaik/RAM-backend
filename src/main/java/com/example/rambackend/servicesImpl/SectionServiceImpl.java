@@ -34,7 +34,7 @@ public class SectionServiceImpl implements SectionService {
     public Section updateSection(String id, Section section) {
         Section currSection = getSectionById(id);
         currSection.setDescription(section.getDescription());
-        currSection.setRegleIds(section.getRegleIds());
+        currSection.setRegles(section.getRegles());
         return sectionRepository.save(currSection);
     }
 
