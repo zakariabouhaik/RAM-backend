@@ -21,7 +21,8 @@ public class Audit {
     private LocalDate dateFin;
     private boolean archivee;
     private Formulaire formulaire;
-    private Utilisateur user;
+    private Utilisateur auditeur;
+    private Utilisateur audite;
     private String rapportAudit;
     private String rapportAction;
 
