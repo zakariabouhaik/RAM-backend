@@ -23,6 +23,6 @@ public class Section {
     private String id;
     private String description;
 
-    @Field("regleIds")
-    private List<String> regleIds = new ArrayList<>();
+
+    private List<Regle> regles = new ArrayList<>();
 }
