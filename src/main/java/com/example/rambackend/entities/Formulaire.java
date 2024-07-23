@@ -15,6 +15,8 @@ public class Formulaire {
     @Id
     private String id;
 
+    private String nom;
+
     @Field
     List<Section>sectionList;
 
