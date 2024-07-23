@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -23,6 +24,5 @@ public class Section {
     private String id;
     private String description;
 
-    @Field("regleIds")
-    private List<String> regleIds = new ArrayList<>();
+    private List<Regle> regles = new ArrayList<>();
 }
