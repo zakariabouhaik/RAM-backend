@@ -20,13 +20,9 @@ public class Audit {
     private LocalDate dateDebut;
     private LocalDate dateFin;
     private boolean archivee;
-    private String nomFormulaire;
+    private Formulaire formulaire;
+    private Utilisateur user;
     private String rapportAudit;
     private String rapportAction;
-
-    /*
-    @OneToMany(mappedBy = "audit", fetch = FetchType.LAZY)
-    private List<Reponse> reponseList  = new ArrayList<>();
-     */
 
 }
