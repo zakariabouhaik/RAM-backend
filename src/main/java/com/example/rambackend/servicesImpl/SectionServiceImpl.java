@@ -2,6 +2,7 @@
 package com.example.rambackend.servicesImpl;
 
 
+import com.example.rambackend.entities.Regle;
 import com.example.rambackend.entities.Section;
 import com.example.rambackend.repository.SectionRepository;
 import com.example.rambackend.services.SectionService;
@@ -17,6 +18,9 @@ public class SectionServiceImpl implements SectionService {
 
     @Override
     public Section saveSection(Section section) {
+
+        
+
         return sectionRepository.save(section);
     }
 
