@@ -1,6 +1,8 @@
 package com.example.rambackend.controllers;
 import com.example.rambackend.entities.Reponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.example.rambackend.services.ReponseService;
 
@@ -13,10 +15,10 @@ public class ReponseController {
     private ReponseService reponseService;
 
     @PostMapping
-    public Reponse addReponse(@RequestBody Reponse reponse) {
-        return reponseService.saveReponse(reponse);
+    public ResponseEntity<Reponse> addReponse(@RequestBody Reponse reponse) {
+        Reponse savedReponse = reponseService.saveReponse(reponse);
+        return ResponseEntity.ok(savedReponse);
     }
-
     @GetMapping
     public List<Reponse> getAllReponses() {
         return reponseService.getAllReponses();
