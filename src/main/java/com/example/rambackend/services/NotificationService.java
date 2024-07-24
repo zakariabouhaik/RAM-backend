@@ -15,5 +15,7 @@ public interface NotificationService {
     void deleteNotificationById(String id);
     Notification updateNotification(String id, Notification notification);
 
+    void checkAndCreateNotifications();
+
 
 }
