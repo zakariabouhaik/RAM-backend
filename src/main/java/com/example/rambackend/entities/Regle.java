@@ -12,5 +12,7 @@ public class Regle {
         private String id;
         private String description;
 
+        private ActionCorrective actionCorrective;
+
 
 }
