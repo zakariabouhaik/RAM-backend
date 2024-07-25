@@ -29,9 +29,9 @@ public class AuditServiceImpl implements AuditService {
         Formulaire formulaire = formulaireRepository.findById(audit.getFormulaire().getId())
                 .orElse(null);
 
-        Utilisateur utilisateur = userRepository.findById(audit.getUser().getId()).orElse(null);
+        Utilisateur utilisateur = userRepository.findById(audit.getAuditeur().getId()).orElse(null);
 
-        audit.setUser(utilisateur);
+        audit.setAuditeur(utilisateur);
         audit.setFormulaire(formulaire);
         return auditRepository.save(audit);
     }

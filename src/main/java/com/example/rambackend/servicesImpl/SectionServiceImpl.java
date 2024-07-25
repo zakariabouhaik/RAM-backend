@@ -3,22 +3,31 @@ package com.example.rambackend.servicesImpl;
 
 import com.example.rambackend.entities.Regle;
 import com.example.rambackend.entities.Section;
+import com.example.rambackend.repository.RegleRepository;
 import com.example.rambackend.repository.SectionRepository;
 import com.example.rambackend.services.SectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class SectionServiceImpl implements SectionService {
     @Autowired
     private SectionRepository sectionRepository;
+    @Autowired
+    private RegleRepository regleRepository;
 
     @Override
     public Section saveSection(Section section) {
 
-        
+        List<Regle> existingRegles = regleRepository.findAllById(
+                section.getRegles().stream().map(Regle::getId).collect(Collectors.toList())
+        );
+
+
+        section.setRegles(existingRegles);
 
         return sectionRepository.save(section);
     }
