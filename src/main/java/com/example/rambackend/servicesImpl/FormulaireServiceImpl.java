@@ -1,8 +1,10 @@
 package com.example.rambackend.servicesImpl;
 
 import com.example.rambackend.entities.Formulaire;
+import com.example.rambackend.entities.Regle;
 import com.example.rambackend.entities.Section;
 import com.example.rambackend.repository.FormulaireRepository;
+import com.example.rambackend.repository.RegleRepository;
 import com.example.rambackend.repository.SectionRepository;
 import com.example.rambackend.services.FormulaireService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,8 @@ public class FormulaireServiceImpl implements FormulaireService {
     FormulaireRepository formulaireRepository;
     @Autowired
     SectionRepository sectionRepository;
+    @Autowired
+    RegleRepository regleRepository;
 
     @Override
     public Formulaire createFormulaire(Formulaire formulaire) {
@@ -43,12 +47,49 @@ public class FormulaireServiceImpl implements FormulaireService {
         return formulaireRepository.findAll();
     }
 
+
     @Override
-    public Formulaire updateFormulaire(String id, Formulaire formulaire) {
-        Formulaire f = formulaireRepository.findById(id).orElse(null);
-        f.setSectionList(formulaire.getSectionList());
-        return formulaireRepository.save(f);
+    public Formulaire updateFormulaire(String id, Formulaire updatedFormulaire) {
+        Formulaire existingFormulaire = formulaireRepository.findById(id).orElseThrow(() -> new RuntimeException("Formulaire not found"));
+
+        existingFormulaire.setNom(updatedFormulaire.getNom());
+
+        List<Section> updatedSections = new ArrayList<>();
+        for (Section updatedSection : updatedFormulaire.getSectionList()) {
+            Section section;
+            if (updatedSection.getId() != null) {
+                section = sectionRepository.findById(updatedSection.getId())
+                        .orElseThrow(() -> new RuntimeException("Section not found"));
+                section.setDescription(updatedSection.getDescription());
+            } else {
+                section = new Section();
+                section.setDescription(updatedSection.getDescription());
+            }
+
+            List<Regle> updatedRegles = new ArrayList<>();
+            for (Regle updatedRegle : updatedSection.getRegles()) {
+                Regle regle;
+                if (updatedRegle.getId() != null) {
+                    regle = regleRepository.findById(updatedRegle.getId())
+                            .orElseThrow(() -> new RuntimeException("Regle not found"));
+                    regle.setDescription(updatedRegle.getDescription());
+                } else {
+                    regle = new Regle();
+                    regle.setDescription(updatedRegle.getDescription());
+                }
+                regle = regleRepository.save(regle);
+                updatedRegles.add(regle);
+            }
+
+            section.setRegles(updatedRegles);
+            section = sectionRepository.save(section);
+            updatedSections.add(section);
+        }
+
+        existingFormulaire.setSectionList(updatedSections);
+        return formulaireRepository.save(existingFormulaire);
     }
+
 
     @Override
     public void deleteFormulaire(String id) {
