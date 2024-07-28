@@ -7,10 +7,12 @@ import com.example.rambackend.repository.AuditRepository;
 import com.example.rambackend.repository.FormulaireRepository;
 import com.example.rambackend.repository.UserRepository;
 import com.example.rambackend.services.AuditService;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 
@@ -24,23 +26,25 @@ public class AuditServiceImpl implements AuditService {
 
     @Override
     public Audit saveAudit(Audit audit) {
-
-
         Formulaire formulaire = formulaireRepository.findById(audit.getFormulaire().getId())
-                .orElse(null);
+                .orElseThrow(() -> new EntityNotFoundException("Formulaire not found"));
 
-        Utilisateur utilisateur = userRepository.findById(audit.getAuditeur().getId()).orElse(null);
+        Utilisateur utilisateur = userRepository.findById(audit.getAuditeur().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Utilisateur not found"));
 
-        audit.setAuditeur(utilisateur);
         audit.setFormulaire(formulaire);
+        audit.setAuditeur(utilisateur);
+
         return auditRepository.save(audit);
     }
 
     @Override
     public List<Audit> getAllAudits() {
-        return auditRepository.findAll();
+        List<Audit> audits = auditRepository.findAll();
+        return audits.stream()
+                .filter(audit -> audit.getAuditeur() != null)
+                .collect(Collectors.toList());
     }
-
     @Override
     public Audit getAuditById(String id) {
         return auditRepository.findById(id).get();
