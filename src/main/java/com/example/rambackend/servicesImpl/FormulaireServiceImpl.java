@@ -1,5 +1,6 @@
 package com.example.rambackend.servicesImpl;
 
+import com.example.rambackend.entities.ActionCorrective;
 import com.example.rambackend.entities.Formulaire;
 import com.example.rambackend.entities.Regle;
 import com.example.rambackend.entities.Section;
@@ -76,6 +77,11 @@ public class FormulaireServiceImpl implements FormulaireService {
                 } else {
                     regle = new Regle();
                     regle.setDescription(updatedRegle.getDescription());
+                    if (updatedRegle.getActionCorrective() != null) {
+                        ActionCorrective actionCorrective = new ActionCorrective();
+                        actionCorrective.setDescription(updatedRegle.getActionCorrective().getDescription());
+                        regle.setActionCorrective(actionCorrective);
+                    }
                 }
                 regle = regleRepository.save(regle);
                 updatedRegles.add(regle);
@@ -89,6 +95,7 @@ public class FormulaireServiceImpl implements FormulaireService {
         existingFormulaire.setSectionList(updatedSections);
         return formulaireRepository.save(existingFormulaire);
     }
+
 
 
     @Override
