@@ -43,11 +43,15 @@ public class RegleServiceImpl implements RegleService {
     }
 
     @Override
-    public Regle addActionCorrectiveToRegle(String regleId, ActionCorrective actionCorrective) {
+    public Regle addActionCorrectiveToRegle(String regleId, String actionCorrective) {
         if (regleRepository.existsById(regleId)) {
-            Regle regle = regleRepository.findById(regleId).get();
-            regle.setActionCorrective(actionCorrective);
-            return regleRepository.save(regle);
+            Regle regle = regleRepository.findById(regleId).orElse(null);
+            if (regle != null) {
+                regle.setActionCorrective(actionCorrective);
+                return regleRepository.save(regle);
+            } else {
+                throw new RuntimeException("Regle not found");
+            }
         } else {
             throw new RuntimeException("Regle not found");
         }
@@ -56,9 +60,13 @@ public class RegleServiceImpl implements RegleService {
     @Override
     public void removeActionCorrectiveFromRegle(String regleId) {
         if (regleRepository.existsById(regleId)) {
-            Regle regle = regleRepository.findById(regleId).get();
-            regle.setActionCorrective(null);
-            regleRepository.save(regle);
+            Regle regle = regleRepository.findById(regleId).orElse(null);
+            if (regle != null) {
+                regle.setActionCorrective(null);
+                regleRepository.save(regle);
+            } else {
+                throw new RuntimeException("Regle not found");
+            }
         } else {
             throw new RuntimeException("Regle not found");
         }

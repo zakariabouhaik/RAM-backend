@@ -15,7 +15,7 @@ public class Regle {
         private String description;
 
 
-        private ActionCorrective actionCorrective;
+        private String actionCorrective;
 
 
         @Override

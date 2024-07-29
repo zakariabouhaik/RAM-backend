@@ -13,6 +13,6 @@ public interface RegleService {
     Regle updateRegle(String id, Regle regle);
     void deleteRegleById(String id);
 
-    Regle addActionCorrectiveToRegle(String regleId, ActionCorrective actionCorrective);
+    Regle addActionCorrectiveToRegle(String regleId, String actionCorrective);
     void removeActionCorrectiveFromRegle(String regleId);
 }

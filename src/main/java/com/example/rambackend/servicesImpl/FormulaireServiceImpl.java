@@ -51,7 +51,8 @@ public class FormulaireServiceImpl implements FormulaireService {
 
     @Override
     public Formulaire updateFormulaire(String id, Formulaire updatedFormulaire) {
-        Formulaire existingFormulaire = formulaireRepository.findById(id).orElseThrow(() -> new RuntimeException("Formulaire not found"));
+        Formulaire existingFormulaire = formulaireRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Formulaire not found"));
 
         existingFormulaire.setNom(updatedFormulaire.getNom());
 
@@ -74,14 +75,11 @@ public class FormulaireServiceImpl implements FormulaireService {
                     regle = regleRepository.findById(updatedRegle.getId())
                             .orElseThrow(() -> new RuntimeException("Regle not found"));
                     regle.setDescription(updatedRegle.getDescription());
+                    regle.setActionCorrective(updatedRegle.getActionCorrective()); // Now just a string
                 } else {
                     regle = new Regle();
                     regle.setDescription(updatedRegle.getDescription());
-                    if (updatedRegle.getActionCorrective() != null) {
-                        ActionCorrective actionCorrective = new ActionCorrective();
-                        actionCorrective.setDescription(updatedRegle.getActionCorrective().getDescription());
-                        regle.setActionCorrective(actionCorrective);
-                    }
+                    regle.setActionCorrective(updatedRegle.getActionCorrective()); // Now just a string
                 }
                 regle = regleRepository.save(regle);
                 updatedRegles.add(regle);
