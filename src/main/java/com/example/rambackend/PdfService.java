@@ -1,6 +1,7 @@
 package com.example.rambackend;
 
-
+import com.example.rambackend.repository.RapportAuditeRepository;
+import com.example.rambackend.entities.RapportAudite;
 import com.example.rambackend.entities.Regle;
 import com.example.rambackend.entities.Reponse;
 import com.example.rambackend.entities.RegleReponse;
@@ -8,6 +9,22 @@ import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
+import com.mongodb.client.gridfs.GridFSBucket;
+import com.mongodb.client.gridfs.GridFSUploadStream;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.gridfs.GridFsOperations;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
+import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -21,6 +38,15 @@ import java.util.stream.Collectors;
 
 @Service
 public class PdfService {
+
+    @Autowired
+    private MongoTemplate mongoTemplate;
+    @Autowired
+    private GridFsOperations gridFsOperations;
+
+
+    @Autowired
+    private RapportAuditeRepository rapportAuditeRepository;
 
     public byte[] generatePdfBytesForReponse(Reponse reponse) {
         Document document = new Document();
@@ -85,5 +111,32 @@ public class PdfService {
         return outputStream.toByteArray();
     }
 
+    ///////////////////////////////////////////////////////////////////////////////
+    public ResponseEntity<InputStreamResource> getPdfById(String id) {
+        try {
+            // Retrieve file from GridFS
+            GridFsResource resource = gridFsOperations.getResource(id);
+            if (resource == null || !resource.exists()) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
 
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(new InputStreamResource(resource.getInputStream()));
+        } catch (IOException e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public RapportAudite savePdfToRapportAudite(byte[] pdfBytes, String filename) {
+        RapportAudite rapportAudite = new RapportAudite();
+        rapportAudite.setId(ObjectId.get().toHexString());
+        rapportAudite.setNom(filename);
+        rapportAudite.setContenu(pdfBytes);
+
+        // Save the RapportAudite and return it
+        return rapportAuditeRepository.save(rapportAudite);
+    }
 }

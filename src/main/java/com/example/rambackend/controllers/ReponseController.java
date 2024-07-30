@@ -1,9 +1,11 @@
 package com.example.rambackend.controllers;
 import com.example.rambackend.EmailService;
 import com.example.rambackend.PdfService;
+import com.example.rambackend.entities.RapportAudite;
 import com.example.rambackend.entities.Regle;
 import com.example.rambackend.entities.RegleReponse;
 import com.example.rambackend.entities.Reponse;
+import com.example.rambackend.repository.ReponseRepository;
 import com.example.rambackend.services.RegleService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -28,7 +31,7 @@ public class ReponseController {
     @Autowired
     private ReponseService reponseService;
     @Autowired
-    private PdfService  generatePdfBytesForReponse;
+    private ReponseRepository reponseRepository;
     @Autowired
     private PdfService pdfService;
 
@@ -79,4 +82,33 @@ public class ReponseController {
         return ResponseEntity.ok("Email envoyé");
     }
 
+@PostMapping("/save-pdf")
+public ResponseEntity<String> savePdf(@RequestBody Map<String, String> request) {
+    String rapportId = request.get("rapportId");
+    if (rapportId == null || rapportId.isEmpty()) {
+        return ResponseEntity.badRequest().body("Invalid reponseId");
+    }
+
+    try {
+        Optional<Reponse> reponseOptional = reponseRepository.findById(rapportId);
+        if (!reponseOptional.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reponse not found with id " + rapportId);
+        }
+
+        Reponse reponse = reponseOptional.get();
+        byte[] pdfBytes = pdfService.generatePdfBytesForReponse(reponse);
+        String filename = "reponse_" + rapportId + ".pdf";
+        RapportAudite savedRapportAudite = pdfService.savePdfToRapportAudite(pdfBytes, filename);
+
+        return ResponseEntity.ok("PDF saved successfully with ID: " + savedRapportAudite.getId());
+    } catch (Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error saving PDF: " + e.getMessage());
+    }
+
+}
+
+    @GetMapping("/pdf/{id}")
+    public ResponseEntity<InputStreamResource> getPdf(@PathVariable String id) {
+        return pdfService.getPdfById(id);
+    }
 }
