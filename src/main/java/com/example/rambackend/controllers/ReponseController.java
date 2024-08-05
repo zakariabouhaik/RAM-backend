@@ -1,5 +1,9 @@
 package com.example.rambackend.controllers;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.example.rambackend.entities.Audit;
 import com.example.rambackend.entities.RapportAudite;
 import com.example.rambackend.entities.Reponse;
@@ -15,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayInputStream;
 import java.util.*;
 
 @RestController
@@ -30,6 +35,15 @@ public class ReponseController {
     private AuditService auditService;
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private AmazonS3 s3client;
+
+    private static final String BUCKET_NAME = "ram-rapports";
+    private static final String AUDITE_FOLDER = "Audite/";
+    private static final String ADMIN_FOLDER = "Admin/";
+
+
 
     @PostMapping
 
@@ -51,6 +65,10 @@ public class ReponseController {
             Audit audit = reponse.getAudit();
             byte[] pdfBytes = pdfService.generatePdf(audit, reponse.getReponses());
             String filename = "rapport_audit_" + audit.getId() + ".pdf";
+
+            String s3Key = ADMIN_FOLDER+filename;
+            uploadToS3(pdfBytes,s3Key);
+
 
             String to = "zakariayoza123@gmail.com";
             String subject = "Rapport d'audit - " + audit.getEscaleVille();
@@ -97,6 +115,10 @@ public class ReponseController {
             byte[] pdfBytes = pdfService.generatePdfBytesForReponse(reponse);
             String filename = "reponse_" + reponseId + ".pdf";
 
+            String s3Key = AUDITE_FOLDER + filename;
+            uploadToS3(pdfBytes,s3Key);
+
+
             emailService.sendEmailWithAttachment("dalalaziz16@gmail.com", "Objet de l'Email", "Contenu de l'Email", pdfBytes, filename);
 
             return ResponseEntity.ok("Email envoyé");
@@ -134,4 +156,18 @@ public class ReponseController {
     public ResponseEntity<InputStreamResource> getPdf(@PathVariable String id) {
         return pdfService.getPdfById(id);
     }
+
+
+
+    private void uploadToS3 (byte[] content,String key){
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(content.length);
+        metadata.setContentType("application/pdf");
+
+        PutObjectRequest putObjectRequest = new PutObjectRequest(BUCKET_NAME,key,new ByteArrayInputStream(content),metadata);
+        s3client.putObject(putObjectRequest);
+    }
+
+
+
 }
