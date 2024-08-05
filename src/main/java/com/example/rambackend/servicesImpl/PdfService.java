@@ -2,6 +2,7 @@ package com.example.rambackend.servicesImpl;
 
 
 import com.example.rambackend.entities.*;
+import com.example.rambackend.repository.RapportAuditeRepository;
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.geom.PageSize;
@@ -14,7 +15,16 @@ import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.property.HorizontalAlignment;
 import com.itextpdf.layout.property.TextAlignment;
+import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.mongodb.gridfs.GridFsOperations;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -32,6 +42,13 @@ import java.util.stream.Collectors;
 @Service
 public class PdfService {
 
+
+    @Autowired
+    private GridFsOperations gridFsOperations;
+
+    @Autowired
+    private RapportAuditeRepository rapportAuditeRepository;
+
     public byte[] generatePdf(Audit audit, List<RegleReponse> reponses) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
@@ -40,25 +57,24 @@ public class PdfService {
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf, PageSize.A4);
 
-
+            // Add logo
             Image logo = new Image(ImageDataFactory.create(new ClassPathResource("static/images/logo.png").getURL()));
             logo.setWidth(100);
             logo.setHorizontalAlignment(HorizontalAlignment.CENTER);
             document.add(logo);
 
-
-            // Ajout du titre
+            // Add title
             Paragraph title = new Paragraph("Rapport d'Audit")
                     .setFontSize(18)
                     .setBold()
                     .setTextAlignment(TextAlignment.CENTER);
             document.add(title);
 
-            // Formatage des dates
+            // Format dates
             String dateDebut = formatDate(audit.getDateDebut());
             String dateFin = formatDate(audit.getDateFin());
 
-
+            // Add audit info
             Paragraph info = new Paragraph(
                     "Auditeur: " + audit.getAuditeur().getFullname() + "\n" +
                             "Ville d'escale: " + audit.getEscaleVille() + "\n" +
@@ -70,16 +86,16 @@ public class PdfService {
                     .setMarginBottom(20);
             document.add(info);
 
-            // Création du tableau
+            // Create table
             float[] columnWidths = {300F, 100F};
             Table table = new Table(columnWidths);
             table.setHorizontalAlignment(HorizontalAlignment.CENTER);
 
-            // En-têtes du tableau
+            // Add table headers
             table.addHeaderCell(new Cell().add(new Paragraph("Règle").setTextAlignment(TextAlignment.CENTER).setBold()));
             table.addHeaderCell(new Cell().add(new Paragraph("Réponse").setTextAlignment(TextAlignment.CENTER).setBold()));
 
-            // Ajout des règles et réponses au tableau
+            // Add rules and responses to the table
             for (RegleReponse regleReponse : reponses) {
                 table.addCell(new Cell().add(new Paragraph(regleReponse.getRegle().getDescription())));
                 String reponseText = regleReponse.getValue() ? "Conforme" : "Non-Conforme";
@@ -90,8 +106,26 @@ public class PdfService {
                 table.addCell(reponseCell);
             }
 
-            // Ajout du tableau au document
+            // Add table to document
             document.add(table);
+
+            // Add corrective actions for non-conform rules
+            List<RegleReponse> nonConformRules = reponses.stream()
+                    .filter(r -> !r.getValue())
+                    .collect(Collectors.toList());
+
+            if (!nonConformRules.isEmpty()) {
+                document.add(new Paragraph("Actions Correctives").setBold().setFontSize(14).setMarginTop(20));
+                Table correctiveTable = new Table(1);
+                correctiveTable.setHorizontalAlignment(HorizontalAlignment.CENTER);
+
+                for (RegleReponse regleReponse : nonConformRules) {
+                    Regle regle = regleReponse.getRegle();
+                    correctiveTable.addCell(new Cell().add(new Paragraph(regle.getActionCorrective())));
+                }
+
+                document.add(correctiveTable);
+            }
 
             document.close();
             return baos.toByteArray();
@@ -99,6 +133,32 @@ public class PdfService {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public ResponseEntity<InputStreamResource> getPdfById(String id) {
+        try {
+            GridFsResource resource = gridFsOperations.getResource(id);
+            if (resource == null || !resource.exists()) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(new InputStreamResource(resource.getInputStream()));
+        } catch (IOException e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public RapportAudite savePdfToRapportAudite(byte[] pdfBytes, String filename) {
+        RapportAudite rapportAudite = new RapportAudite();
+        rapportAudite.setId(ObjectId.get().toHexString());
+        rapportAudite.setNom(filename);
+        rapportAudite.setContenu(pdfBytes);
+
+        return rapportAuditeRepository.save(rapportAudite);
     }
 
     private String formatDate(Object date) {
@@ -115,4 +175,5 @@ public class PdfService {
         }
         return date.toString(); // fallback
     }
+
 }

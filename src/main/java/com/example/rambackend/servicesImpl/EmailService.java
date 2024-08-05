@@ -12,8 +12,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmailService {
 
+    private final JavaMailSender emailSender;
+
     @Autowired
-    private JavaMailSender emailSender;
+    public EmailService(JavaMailSender emailSender) {
+        this.emailSender = emailSender;
+    }
 
     public void sendEmailWithAttachment(String to, String subject, String text, byte[] attachment, String attachmentName) throws MessagingException {
         MimeMessage message = emailSender.createMimeMessage();
@@ -22,9 +26,10 @@ public class EmailService {
         helper.setFrom("contact.bouhaikzakaria@gmail.com");
         helper.setTo(to);
         helper.setSubject(subject);
-        helper.setText(text);
+        helper.setText(text, true); // Enable HTML content
 
-        helper.addAttachment(attachmentName, new ByteArrayResource(attachment));
+        ByteArrayResource attachmentResource = new ByteArrayResource(attachment);
+        helper.addAttachment(attachmentName, attachmentResource);
 
         emailSender.send(message);
     }

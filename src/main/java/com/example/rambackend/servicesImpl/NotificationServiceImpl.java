@@ -62,34 +62,6 @@ public class NotificationServiceImpl implements NotificationService {
                 .orElse(null);
     }
 
-    @Override
-    public void checkAndCreateNotifications() {
-        List<Utilisateur> utilisateurs = userService.getAllUtilisateurs();
-        LocalDateTime now = LocalDateTime.now();
-
-        for (Utilisateur utilisateur : utilisateurs) {
-            if (utilisateur.getRole() == UserRole.AUDITE) {
-                LocalDateTime dateCreation = utilisateur.getDateCreation();
-                if (dateCreation != null) {
-                    long daysSinceCreation = ChronoUnit.DAYS.between(dateCreation, now);
-
-                    if (daysSinceCreation == 30) {
-                        Notification notification = new Notification();
-                        notification.setDesciption("Il reste 1 mois avant l'expiration du compte de l'audité : " + utilisateur.getNom_complet());
-                        notification.setPriorite(1);
-                        notification.setEtatNotification(EtatNotification.NONLUE);
-                        saveNotification(notification);
-                    } else if (daysSinceCreation == 45) {
-                        Notification notification = new Notification();
-                        notification.setDesciption("Il reste 15 jours avant l'expiration du compte de l'audité : " + utilisateur.getNom_complet());
-                        notification.setPriorite(2);
-                        notification.setEtatNotification(EtatNotification.NONLUE);
-                        saveNotification(notification);
-                    }
-                }
-            }
-        }
-    }
 
 
 

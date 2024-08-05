@@ -1,37 +1,21 @@
 package com.example.rambackend.controllers;
 
+import com.example.rambackend.entities.Audit;
 import com.example.rambackend.entities.RapportAudite;
-import com.example.rambackend.entities.Regle;
-import com.example.rambackend.entities.RegleReponse;
 import com.example.rambackend.entities.Reponse;
 import com.example.rambackend.repository.ReponseRepository;
-import com.example.rambackend.services.RegleService;
-import jakarta.mail.MessagingException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-
-import com.example.rambackend.entities.Audit;
-import com.example.rambackend.entities.RapportAdmin;
-import com.example.rambackend.entities.Reponse;
 import com.example.rambackend.services.AuditService;
-import com.example.rambackend.services.RapportAdminService;
+import com.example.rambackend.services.ReponseService;
 import com.example.rambackend.servicesImpl.EmailService;
 import com.example.rambackend.servicesImpl.PdfService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.bind.annotation.*;
-import com.example.rambackend.services.ReponseService;
-
-
 
 import java.util.*;
-
 
 @RestController
 @RequestMapping("/Reponse")
@@ -42,16 +26,10 @@ public class ReponseController {
     private ReponseRepository reponseRepository;
     @Autowired
     private PdfService pdfService;
-
-    @Autowired
-    private EmailService emailService;
-
-
     @Autowired
     private AuditService auditService;
     @Autowired
-    private RapportAdminService rapportAdminService;
-
+    private EmailService emailService;
 
     @PostMapping
     public ResponseEntity<?> addReponse(@RequestBody Reponse reponse) {
@@ -64,7 +42,6 @@ public class ReponseController {
             if (pdfBytes != null) {
                 String pdfBase64 = Base64.getEncoder().encodeToString(pdfBytes);
 
-                // Envoyer l'email avec le PDF en pièce jointe
                 String to = "zakariayoza123@gmail.com";
                 String subject = "Rapport d'audit - " + audit.getEscaleVille();
                 String text = "Veuillez trouver ci-joint le rapport d'audit pour " + audit.getEscaleVille() + ".";
@@ -95,6 +72,7 @@ public class ReponseController {
     public Reponse getReponse(@PathVariable String id) {
         return reponseService.getReponseById(id);
     }
+
     @DeleteMapping("/{id}")
     public void deleteReponse(@PathVariable String id) {
         reponseService.deleteReponseById(id);
@@ -109,46 +87,48 @@ public class ReponseController {
     public ResponseEntity<String> sendPdfEmail(@RequestBody Map<String, String> requestBody) {
         String reponseId = requestBody.get("reponseId");
 
-        // Fetch the Reponse object using the reponseId
         Reponse reponse = reponseService.getReponseById(reponseId);
         if (reponse == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reponse not found with id " + reponseId);
         }
 
-        // Generate PDF bytes using the Reponse object
-        byte[] pdfBytes = pdfService.generatePdfBytesForReponse(reponse);
-        String filename = "reponse_" + reponseId + ".pdf";
+        try {
+            Audit audit = reponse.getAudit();
+            byte[] pdfBytes = pdfService.generatePdf(audit, reponse.getReponses());
+            String filename = "reponse_" + reponseId + ".pdf";
 
-        // Send the email with the PDF attachment
-        emailService.sendEmailWithAttachment("dalalaziz16@gmail.com", "Objet de l'Email", "Contenu de l'Email", pdfBytes, filename);
+            emailService.sendEmailWithAttachment("dalalaziz16@gmail.com", "Rapport d'audit", "Veuillez trouver ci-joint le rapport d'audit.", pdfBytes, filename);
 
-        return ResponseEntity.ok("Email envoyé");
+            return ResponseEntity.ok("Email envoyé");
+        } catch (MessagingException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur lors de l'envoi de l'email : " + e.getMessage());
+        }
     }
 
-@PostMapping("/save-pdf")
-public ResponseEntity<String> savePdf(@RequestBody Map<String, String> request) {
-    String rapportId = request.get("rapportId");
-    if (rapportId == null || rapportId.isEmpty()) {
-        return ResponseEntity.badRequest().body("Invalid reponseId");
-    }
-
-    try {
-        Optional<Reponse> reponseOptional = reponseRepository.findById(rapportId);
-        if (!reponseOptional.isPresent()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reponse not found with id " + rapportId);
+    @PostMapping("/save-pdf")
+    public ResponseEntity<String> savePdf(@RequestBody Map<String, String> request) {
+        String rapportId = request.get("rapportId");
+        if (rapportId == null || rapportId.isEmpty()) {
+            return ResponseEntity.badRequest().body("Invalid reponseId");
         }
 
-        Reponse reponse = reponseOptional.get();
-        byte[] pdfBytes = pdfService.generatePdfBytesForReponse(reponse);
-        String filename = "reponse_" + rapportId + ".pdf";
-        RapportAudite savedRapportAudite = pdfService.savePdfToRapportAudite(pdfBytes, filename);
+        try {
+            Optional<Reponse> reponseOptional = reponseRepository.findById(rapportId);
+            if (!reponseOptional.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reponse not found with id " + rapportId);
+            }
 
-        return ResponseEntity.ok("PDF saved successfully with ID: " + savedRapportAudite.getId());
-    } catch (Exception e) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error saving PDF: " + e.getMessage());
+            Reponse reponse = reponseOptional.get();
+            Audit audit = reponse.getAudit();
+            byte[] pdfBytes = pdfService.generatePdf(audit, reponse.getReponses());
+            String filename = "reponse_" + rapportId + ".pdf";
+            RapportAudite savedRapportAudite = pdfService.savePdfToRapportAudite(pdfBytes, filename);
+
+            return ResponseEntity.ok("PDF saved successfully with ID: " + savedRapportAudite.getId());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error saving PDF: " + e.getMessage());
+        }
     }
-
-}
 
     @GetMapping("/pdf/{id}")
     public ResponseEntity<InputStreamResource> getPdf(@PathVariable String id) {
