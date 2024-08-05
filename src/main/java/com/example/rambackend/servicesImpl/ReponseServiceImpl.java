@@ -54,7 +54,7 @@ public class ReponseServiceImpl implements ReponseService {
 
     @Override
     public Reponse getReponseById(String id) {
-        return reponseRepository.findById(id).get();
+        return reponseRepository.findById(id).orElse(null);
     }
 
     @Override

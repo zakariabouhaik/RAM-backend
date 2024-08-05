@@ -24,20 +24,23 @@ public class AuditServiceImpl implements AuditService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private KeycloakServiceImpl keycloakService;
+
+
     @Override
     public Audit saveAudit(Audit audit) {
         Formulaire formulaire = formulaireRepository.findById(audit.getFormulaire().getId())
                 .orElseThrow(() -> new EntityNotFoundException("Formulaire not found"));
 
-        Utilisateur utilisateur = userRepository.findById(audit.getAuditeur().getId())
-                .orElseThrow(() -> new EntityNotFoundException("Utilisateur not found"));
-
-        audit.setFormulaire(formulaire);
-        audit.setAuditeur(utilisateur);
-
-        return auditRepository.save(audit);
+        return keycloakService.getUserById(audit.getAuditeur().getId())
+                .map(utilisateur -> {
+                    audit.setFormulaire(formulaire);
+                    audit.setAuditeur(utilisateur);
+                    return auditRepository.save(audit);
+                })
+                .block(); // Bloque pour obtenir le résultat, considérez d'utiliser Mono/Flux si possible
     }
-
     @Override
     public List<Audit> getAllAudits() {
         List<Audit> audits = auditRepository.findAll();
@@ -64,9 +67,18 @@ public class AuditServiceImpl implements AuditService {
         currAudit.setDateFin(audit.getDateFin());
         currAudit.setArchivee(audit.isArchivee());
         currAudit.setFormulaire(audit.getFormulaire());
-        currAudit.setRapportAudit(audit.getRapportAudit());
+        currAudit.setRapportAdmin(audit.getRapportAdmin());
         currAudit.setRapportAction(audit.getRapportAction());
-        return auditRepository.save(currAudit);
 
+        if (audit.getAuditeur() != null && !audit.getAuditeur().getId().equals(currAudit.getAuditeur().getId())) {
+            return keycloakService.getUserById(audit.getAuditeur().getId())
+                    .map(utilisateur -> {
+                        currAudit.setAuditeur(utilisateur);
+                        return auditRepository.save(currAudit);
+                    })
+                    .block(); // Bloque pour obtenir le résultat, considérez d'utiliser Mono/Flux si possible
+        } else {
+            return auditRepository.save(currAudit);
+        }
     }
 }

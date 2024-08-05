@@ -1,6 +1,7 @@
 package com.example.rambackend.entities;
 
 import com.example.rambackend.enums.UserRole;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,10 +18,9 @@ import java.util.UUID;
 public class Utilisateur {
     @Id
     private String id;
-    private String nom_complet;
+    private String Fullname;
     private String email;
+    @JsonIgnore
     private String mdp;
-    private String tel;
-    private LocalDateTime DateCreation= LocalDateTime.now();
     private UserRole role;
 }

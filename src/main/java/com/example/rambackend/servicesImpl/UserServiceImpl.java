@@ -34,8 +34,8 @@ public class UserServiceImpl implements UserService {
     public Utilisateur updateUtilisateur(String id, Utilisateur utilisateurDetails) {
         return userRepository.findById(id)
                 .map(utilisateur -> {
-                    if (utilisateurDetails.getNom_complet() != null) {
-                        utilisateur.setNom_complet(utilisateurDetails.getNom_complet());
+                    if (utilisateurDetails.getFullname() != null) {
+                        utilisateur.setFullname(utilisateurDetails.getFullname());
                     }
                     if (utilisateurDetails.getEmail() != null) {
                         utilisateur.setEmail(utilisateurDetails.getEmail());
@@ -43,9 +43,7 @@ public class UserServiceImpl implements UserService {
                     if (utilisateurDetails.getMdp() != null) {
                         utilisateur.setMdp(utilisateurDetails.getMdp());
                     }
-                    if (utilisateurDetails.getTel() != null) {
-                        utilisateur.setTel(utilisateurDetails.getTel());
-                    }
+
                     if (utilisateurDetails.getRole() != null) {
                         utilisateur.setRole(utilisateurDetails.getRole());
                     }
