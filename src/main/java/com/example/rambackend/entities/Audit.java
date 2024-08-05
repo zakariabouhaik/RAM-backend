@@ -23,7 +23,7 @@ public class Audit {
     private Formulaire formulaire;
     private Utilisateur auditeur;
     private Utilisateur audite;
-    private String rapportAudit;
+    private RapportAdmin rapportAdmin;
     private String rapportAction;
 
 }
