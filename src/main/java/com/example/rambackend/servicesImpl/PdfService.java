@@ -15,6 +15,12 @@ import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.property.HorizontalAlignment;
 import com.itextpdf.layout.property.TextAlignment;
+import com.itextpdf.layout.property.UnitValue;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.FontFactory;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -27,6 +33,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -37,6 +44,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import java.io.InputStream;
 
 
 @Service
@@ -57,24 +66,25 @@ public class PdfService {
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf, PageSize.A4);
 
-            // Add logo
+
             Image logo = new Image(ImageDataFactory.create(new ClassPathResource("static/images/logo.png").getURL()));
             logo.setWidth(100);
             logo.setHorizontalAlignment(HorizontalAlignment.CENTER);
             document.add(logo);
 
-            // Add title
+
+            // Ajout du titre
             Paragraph title = new Paragraph("Rapport d'Audit")
                     .setFontSize(18)
                     .setBold()
                     .setTextAlignment(TextAlignment.CENTER);
             document.add(title);
 
-            // Format dates
+            // Formatage des dates
             String dateDebut = formatDate(audit.getDateDebut());
             String dateFin = formatDate(audit.getDateFin());
 
-            // Add audit info
+
             Paragraph info = new Paragraph(
                     "Auditeur: " + audit.getAuditeur().getFullname() + "\n" +
                             "Ville d'escale: " + audit.getEscaleVille() + "\n" +
@@ -86,16 +96,16 @@ public class PdfService {
                     .setMarginBottom(20);
             document.add(info);
 
-            // Create table
+            // Création du tableau
             float[] columnWidths = {300F, 100F};
             Table table = new Table(columnWidths);
             table.setHorizontalAlignment(HorizontalAlignment.CENTER);
 
-            // Add table headers
+            // En-têtes du tableau
             table.addHeaderCell(new Cell().add(new Paragraph("Règle").setTextAlignment(TextAlignment.CENTER).setBold()));
             table.addHeaderCell(new Cell().add(new Paragraph("Réponse").setTextAlignment(TextAlignment.CENTER).setBold()));
 
-            // Add rules and responses to the table
+            // Ajout des règles et réponses au tableau
             for (RegleReponse regleReponse : reponses) {
                 table.addCell(new Cell().add(new Paragraph(regleReponse.getRegle().getDescription())));
                 String reponseText = regleReponse.getValue() ? "Conforme" : "Non-Conforme";
@@ -106,25 +116,71 @@ public class PdfService {
                 table.addCell(reponseCell);
             }
 
-            // Add table to document
+            // Ajout du tableau au document
             document.add(table);
 
-            // Add corrective actions for non-conform rules
-            List<RegleReponse> nonConformRules = reponses.stream()
+            document.close();
+            return baos.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public byte[] generatePdfBytesForReponse(Reponse reponse) {
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        try {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf, PageSize.A4);
+
+            // Add logo
+            try (InputStream logoStream = getClass().getResourceAsStream("/IMG/logoRAM.png")) {
+                if (logoStream != null) {
+                    Image logo = new Image(ImageDataFactory.create(logoStream.readAllBytes()));
+                    logo.scaleToFit(100, 100); // Scale logo to fit within 100x100 pixels (adjust as needed)
+                    logo.setHorizontalAlignment(HorizontalAlignment.CENTER); // Center the logo
+                    document.add(logo);
+                } else {
+                    System.err.println("Logo image not found.");
+                }
+            }
+
+            // Title
+            document.add(new Paragraph("Rapport d'Audit")
+                    .setFontSize(18)
+                    .setBold()
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(20));
+
+            // Filter non-conform rules
+            List<RegleReponse> nonConformRules = reponse.getReponses().stream()
                     .filter(r -> !r.getValue())
                     .collect(Collectors.toList());
 
             if (!nonConformRules.isEmpty()) {
-                document.add(new Paragraph("Actions Correctives").setBold().setFontSize(14).setMarginTop(20));
-                Table correctiveTable = new Table(1);
-                correctiveTable.setHorizontalAlignment(HorizontalAlignment.CENTER);
+                // Add a table for non-conform rules
+                Table table = new Table(UnitValue.createPercentArray(new float[]{1})).useAllAvailableWidth();
 
+                // Header en gras
+                table.addHeaderCell(new Cell().add(new Paragraph("Action Corrective")
+                        .setBold()
+                        .setTextAlignment(TextAlignment.CENTER)));
+
+                // Rows corrective actions
                 for (RegleReponse regleReponse : nonConformRules) {
                     Regle regle = regleReponse.getRegle();
-                    correctiveTable.addCell(new Cell().add(new Paragraph(regle.getActionCorrective())));
+                    table.addCell(new Cell().add(new Paragraph(regle.getActionCorrective())
+                            .setTextAlignment(TextAlignment.CENTER)));
                 }
 
-                document.add(correctiveTable);
+                document.add(table);
+            } else {
+                document.add(new Paragraph("Aucune règle non conforme trouvée.")
+                        .setTextAlignment(TextAlignment.CENTER));
             }
 
             document.close();

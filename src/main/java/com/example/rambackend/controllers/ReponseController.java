@@ -32,32 +32,33 @@ public class ReponseController {
     private EmailService emailService;
 
     @PostMapping
-    public ResponseEntity<?> addReponse(@RequestBody Reponse reponse) {
+
+
+    public ResponseEntity<Reponse> addReponse(@RequestBody Reponse reponse) {
+        Reponse savedReponse = reponseService.saveReponse(reponse);
+        return ResponseEntity.ok(savedReponse);
+    }
+    @PostMapping("/send-pdf-email2")
+    public ResponseEntity<String> sendPdfEmail2(@RequestBody Map<String, String> requestBody) {
+        String reponseId = requestBody.get("reponseId");
+
+        Reponse reponse = reponseService.getReponseById(reponseId);
+        if (reponse == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reponse not found with id " + reponseId);
+        }
+
         try {
-            Reponse savedReponse = reponseService.saveReponse(reponse);
-            Audit audit = auditService.getAuditById(savedReponse.getAudit().getId());
+            Audit audit = reponse.getAudit();
+            byte[] pdfBytes = pdfService.generatePdf(audit, reponse.getReponses());
+            String filename = "rapport_audit_" + audit.getId() + ".pdf";
 
-            byte[] pdfBytes = pdfService.generatePdf(audit, savedReponse.getReponses());
+            String to = "zakariayoza123@gmail.com";
+            String subject = "Rapport d'audit - " + audit.getEscaleVille();
+            String text = "Veuillez trouver ci-joint le rapport d'audit pour " + audit.getEscaleVille() + ".";
 
-            if (pdfBytes != null) {
-                String pdfBase64 = Base64.getEncoder().encodeToString(pdfBytes);
+            emailService.sendEmailWithAttachment(to, subject, text, pdfBytes, filename);
 
-                String to = "zakariayoza123@gmail.com";
-                String subject = "Rapport d'audit - " + audit.getEscaleVille();
-                String text = "Veuillez trouver ci-joint le rapport d'audit pour " + audit.getEscaleVille() + ".";
-                String attachmentName = "rapport_audit_" + audit.getId() + ".pdf";
-
-                emailService.sendEmailWithAttachment(to, subject, text, pdfBytes, attachmentName);
-
-                Map<String, Object> response = new HashMap<>();
-                response.put("audit", audit);
-                response.put("pdfContent", pdfBase64);
-                response.put("message", "Email envoyé avec succès à " + to);
-
-                return ResponseEntity.ok(response);
-            } else {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur lors de la génération du PDF");
-            }
+            return ResponseEntity.ok("Email envoyé à zakariayoza123@gmail.com");
         } catch (MessagingException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur lors de l'envoi de l'email : " + e.getMessage());
         }
@@ -93,11 +94,10 @@ public class ReponseController {
         }
 
         try {
-            Audit audit = reponse.getAudit();
-            byte[] pdfBytes = pdfService.generatePdf(audit, reponse.getReponses());
+            byte[] pdfBytes = pdfService.generatePdfBytesForReponse(reponse);
             String filename = "reponse_" + reponseId + ".pdf";
 
-            emailService.sendEmailWithAttachment("dalalaziz16@gmail.com", "Rapport d'audit", "Veuillez trouver ci-joint le rapport d'audit.", pdfBytes, filename);
+            emailService.sendEmailWithAttachment("dalalaziz16@gmail.com", "Objet de l'Email", "Contenu de l'Email", pdfBytes, filename);
 
             return ResponseEntity.ok("Email envoyé");
         } catch (MessagingException e) {
