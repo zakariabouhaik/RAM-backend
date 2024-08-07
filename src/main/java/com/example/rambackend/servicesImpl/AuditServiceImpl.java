@@ -81,4 +81,10 @@ public class AuditServiceImpl implements AuditService {
             return auditRepository.save(currAudit);
         }
     }
+
+
+
+    public List<Audit> findAuditsByUserId(String userId) {
+        return auditRepository.findByAuditeurId(userId);
+    }
 }

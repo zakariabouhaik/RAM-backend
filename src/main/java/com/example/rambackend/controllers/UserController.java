@@ -75,5 +75,13 @@ public class UserController {
                 .then(Mono.just(ResponseEntity.ok().<Void>build()))
                 .onErrorResume(e -> Mono.just(ResponseEntity.notFound().build()));
     }
+    @GetMapping("/current-user-id")
+    public Mono<ResponseEntity<Map<String, String>>> getCurrentUserId(@RequestHeader("Authorization") String authorizationHeader) {
+        String accessToken = authorizationHeader.replace("Bearer ", "");
+        return keycloakService.getCurrentUserId(accessToken)
+                .map(id -> ResponseEntity.ok(Map.of("userId", id)))
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
 
 }

@@ -268,4 +268,18 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
+    public Mono<String> getCurrentUserId(String accessToken) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/admin/realms/RAM/users/me").build())
+                .headers(headers -> headers.setBearerAuth(accessToken))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(user -> (String) user.get("id"))
+                .onErrorResume(e -> {
+                    System.err.println("Error fetching current user ID: " + e.getMessage());
+                    return Mono.empty();
+                });
+    }
+
+
 }
