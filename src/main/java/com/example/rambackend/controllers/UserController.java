@@ -34,6 +34,16 @@ public class UserController {
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
+    @PostMapping("/login")
+    public Mono<ResponseEntity<Map<String, Object>>> login(@RequestBody Map<String, String> loginRequest) {
+        String username = loginRequest.get("username");
+        String password = loginRequest.get("password");
+        return keycloakService.login(username, password)
+                .map(ResponseEntity::ok)
+                .onErrorResume(e -> Mono.just(ResponseEntity.badRequest().body(Map.of("error", e.getMessage()))));
+    }
+
+
     @GetMapping()
     public Mono<ResponseEntity<List<Utilisateur>>> getAllUsers() {
         return keycloakService.getAllUsers()
