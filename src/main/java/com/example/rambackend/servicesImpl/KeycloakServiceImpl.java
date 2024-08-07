@@ -129,6 +129,32 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
+    public Mono<Map<String, Object>> login(String username, String password) {
+        System.out.println("Attempting login for user: " + username);
+        return webClient.post()
+                .uri("/realms/RAM/protocol/openid-connect/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(BodyInserters.fromFormData("grant_type", "password")
+                        .with("client_id", "RAM")
+                        .with("client_secret", "W298zel3u864jv7CgPniC8pBbdTimykm")
+                        .with("username", username)
+                        .with("password", password))
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .doOnNext(tokenInfo -> System.out.println("Login successful for user: " + username))
+                .onErrorResume(WebClientResponseException.class, e -> {
+                    System.err.println("Keycloak error response: " + e.getResponseBodyAsString());
+                    if (e.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                        return Mono.error(new RuntimeException("Invalid credentials"));
+                    }
+                    return Mono.error(e);
+                })
+                .onErrorMap(error -> {
+                    System.err.println("Login error for user " + username + ": " + error.getMessage());
+                    return error;
+                });
+    }
+
     public Mono<Utilisateur> createAndFetchUser(String email, String password, String fullname, UserRole role) {
         return createUser(email, password, fullname, role)
                 .flatMap(userId -> fetchUserDetails(userId));
