@@ -20,7 +20,6 @@ public class Utilisateur {
     private String id;
     private String Fullname;
     private String email;
-    @JsonIgnore
     private String mdp;
     private UserRole role;
 }
