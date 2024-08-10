@@ -22,4 +22,5 @@ public class Utilisateur {
     private String email;
     private String mdp;
     private UserRole role;
+    private Boolean Enabled;
 }
