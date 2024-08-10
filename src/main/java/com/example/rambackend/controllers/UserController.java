@@ -4,6 +4,7 @@ import com.example.rambackend.entities.Utilisateur;
 import com.example.rambackend.services.UserService;
 import com.example.rambackend.servicesImpl.KeycloakServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -11,7 +12,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/User")
@@ -25,7 +25,41 @@ public class UserController {
 
     @PostMapping
     public Mono<Utilisateur> addUser(@RequestBody Utilisateur user) {
-        return keycloakService.createAndFetchUser(user.getEmail(), user.getMdp(), user.getFullname(), user.getRole());
+        return keycloakService.createAndFetchUser(user.getEmail(), user.getFullname());
+    }
+
+    @PostMapping("/addAudit")
+    public Mono<Utilisateur>addAudit(@RequestBody Utilisateur user){
+        return keycloakService.createAudite(user.getEmail(),user.getFullname());
+    }
+
+    @PostMapping("/addpassword")
+    public Mono<ResponseEntity<Boolean>> setPassword(@RequestBody Utilisateur user){
+
+        return keycloakService.setPassword(user.getEmail(),user.getMdp()).
+                map(success -> ResponseEntity.ok(success))
+                .defaultIfEmpty(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false));
+
+    }
+
+    @PostMapping("/checkPassword")
+    public Mono<ResponseEntity<Map<String, Boolean>>> checkPassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        return keycloakService.checkAccountStatus(email)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+    @PutMapping("/enable/{userId}")
+    public Mono<ResponseEntity<Boolean>> enableUser(@PathVariable String userId) {
+        return keycloakService.enableUser(userId)
+                .map(success -> {
+                    if (success) {
+                        return ResponseEntity.ok(true);
+                    } else {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
+                    }
+                })
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Utilisateur>> getUser(@PathVariable String id) {
@@ -47,6 +81,19 @@ public class UserController {
     @GetMapping()
     public Mono<ResponseEntity<List<Utilisateur>>> getAllUsers() {
         return keycloakService.getAllUsers()
+                .collectList()
+                .map(users -> {
+                    if (users.isEmpty()) {
+                        return ResponseEntity.noContent().build();
+                    } else {
+                        return ResponseEntity.ok(users);
+                    }
+                });
+    }
+
+    @GetMapping("/Audite")
+    public Mono<ResponseEntity<List<Utilisateur>>> getAllAudite() {
+        return keycloakService.getAllAudite()
                 .collectList()
                 .map(users -> {
                     if (users.isEmpty()) {

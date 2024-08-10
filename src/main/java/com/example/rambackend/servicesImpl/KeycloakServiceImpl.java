@@ -14,8 +14,6 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +48,95 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
-    public Mono<String> createUser(String email, String password, String fullname, UserRole role) {
+    public Mono<Utilisateur> createAudite(String email, String fullname) {
+        return getAdminToken()
+                .flatMap(token -> {
+                    System.out.println("Creating user with email: " + email);
+                    Map<String, Object> userRepresentation = new HashMap<>();
+                    userRepresentation.put("username", email);
+                    userRepresentation.put("email", email);
+                    userRepresentation.put("enabled", false);
+
+                    Map<String, List<String>> attributes = new HashMap<>();
+                    attributes.put("Fullname", fullname != null ? List.of(fullname) : List.of());
+                    attributes.put("role", List.of(UserRole.AUDITE.toString()));
+                    userRepresentation.put("attributes", attributes);
+
+                    return webClient.post()
+                            .uri("/admin/realms/RAM/users")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(userRepresentation)
+                            .retrieve()
+                            .bodyToMono(Void.class)
+                            .then(getUserIdByEmail(email, token))
+                            .flatMap(userId -> fetchUserDetails(userId))
+                            .onErrorResume(WebClientResponseException.class, e -> {
+                                System.err.println("Error response body: " + e.getResponseBodyAsString());
+                                return Mono.error(e);
+                            });
+                })
+                .doOnNext(user -> System.out.println("Created user with ID: " + user.getId()))
+                .onErrorResume(error -> {
+                    System.err.println("Error creating user in Keycloak: " + error.getMessage());
+                    error.printStackTrace();
+                    return Mono.error(error);
+                });
+    }
+
+    public Mono<Boolean>enableUser(String userId){
+        return getAdminToken()
+                .flatMap(token -> {
+                    Map<String,Object>userUpdate = new HashMap<>();
+                    userUpdate.put("enabled",true);
+
+
+                    return webClient.put()
+                            .uri("/admin/realms/RAM/users/{id}", userId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(userUpdate)
+                            .retrieve()
+                            .bodyToMono(Void.class)
+                            .thenReturn(true)
+                            .onErrorResume(WebClientResponseException.class, e -> {
+                                System.err.println("Error enabling user: " + e.getResponseBodyAsString());
+                                return Mono.just(false);
+                            });
+                })
+                .onErrorResume(error -> {
+                    System.err.println("Error enabling user in Keycloak: " + error.getMessage());
+                    error.printStackTrace();
+                    return Mono.just(false);
+                });
+    }
+
+    public Mono<Boolean>setPassword(String email,String newPassword){
+    return getAdminToken()
+            .flatMap(token -> getUserIdByEmail(email,token)
+                    .flatMap(userId->{
+                        Map<String,Object>passwordSet  = new HashMap<>();
+                        passwordSet.put("type","password");
+                        passwordSet.put("value",newPassword);
+                        passwordSet.put("temporary",false);
+
+                        return webClient.put()
+                                .uri("/admin/realms/RAM/users/{id}/reset-password", userId)
+                                .header(HttpHeaders.AUTHORIZATION,"Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(passwordSet)
+                                .retrieve()
+                                .bodyToMono(Void.class)
+                                .thenReturn(true);
+                    })
+
+            )
+            .onErrorResume(e->{
+                System.err.println("Error setting password: "+e.getMessage());
+                return Mono.just(false);
+            });
+    }
+    public Mono<String> createUser(String email, String fullname) {
         return getAdminToken()
                 .flatMap(token -> {
                     System.out.println("Creating user with email: " + email);
@@ -61,18 +147,10 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
 
                     Map<String, List<String>> attributes = new HashMap<>();
                     attributes.put("Fullname", fullname != null ? List.of(fullname) : List.of());
-                     attributes.put("role", role != null ? List.of(role.toString()) : List.of());
+                    attributes.put("role", List.of(UserRole.AUDITEUR.toString()));
                     userRepresentation.put("attributes", attributes);
 
-                    List<Map<String, Object>> credentials = new ArrayList<>();
-                    if (password != null) {
-                        credentials.add(Map.of(
-                                "type", "password",
-                                "value", password,
-                                "temporary", false
-                        ));
-                    }
-                    userRepresentation.put("credentials", credentials);
+
 
                     return webClient.post()
                             .uri("/admin/realms/RAM/users")
@@ -129,6 +207,23 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
+
+    public Flux<Utilisateur> getAllAudite() {
+        return getAdminToken()
+                .flatMapMany(token -> webClient.get()
+                        .uri("/admin/realms/RAM/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve()
+                        .bodyToFlux(new ParameterizedTypeReference<Map<String, Object>>() {})
+                        .map(this::mapToUtilisateur)
+                        .filter(user->UserRole.AUDITE.equals(user.getRole()))
+                )
+                .onErrorResume(e -> {
+                    System.err.println("Error fetching users from Keycloak: " + e.getMessage());
+                    return Flux.empty();
+                });
+    }
+
     public Mono<Map<String, Object>> login(String username, String password) {
         System.out.println("Attempting login for user: " + username);
         return webClient.post()
@@ -155,8 +250,8 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
-    public Mono<Utilisateur> createAndFetchUser(String email, String password, String fullname, UserRole role) {
-        return createUser(email, password, fullname, role)
+    public Mono<Utilisateur> createAndFetchUser(String email, String fullname) {
+        return createUser(email, fullname)
                 .flatMap(userId -> fetchUserDetails(userId));
     }
 
@@ -171,11 +266,49 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 );
     }
 
+    public Mono<Map<String, Boolean>> checkAccountStatus(String email) {
+        return getAdminToken()
+                .flatMap(token -> webClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/admin/realms/RAM/users")
+                                .queryParam("email", email)
+                                .build())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve()
+                        .bodyToMono(new ParameterizedTypeReference<List<Map<String, Object>>>() {})
+                )
+                .flatMap(users -> {
+                    if (users.isEmpty()) {
+                        return Mono.just(Map.of("exists", false, "enabled", false, "hasPassword", false));
+                    }
+                    Map<String, Object> user = users.get(0);
+                    String userId = (String) user.get("id");
+                    boolean isEnabled = (Boolean) user.get("enabled");
+
+                    return getAdminToken()
+                            .flatMap(token -> webClient.get()
+                                    .uri("/admin/realms/RAM/users/{id}/credentials", userId)
+                                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                                    .retrieve()
+                                    .bodyToMono(new ParameterizedTypeReference<List<Map<String, Object>>>() {})
+                                    .map(credentials -> Map.of(
+                                            "exists", true,
+                                            "enabled", isEnabled,
+                                            "hasPassword", !credentials.isEmpty()
+                                    ))
+                            );
+                })
+                .onErrorResume(e -> {
+                    System.err.println("Error checking account status: " + e.getMessage());
+                    return Mono.just(Map.of("exists", false, "enabled", false, "hasPassword", false));
+                });
+    }
     private Utilisateur mapToUtilisateur(Map<String, Object> userDetails) {
         Utilisateur user = new Utilisateur();
         user.setId((String) userDetails.get("id"));
         user.setFullname(getAttributeValue(userDetails, "Fullname"));
         user.setEmail((String) userDetails.get("email"));
+        user.setEnabled((Boolean) userDetails.get("enabled"));
         user.setRole(UserRole.valueOf(getAttributeValue(userDetails, "role")));
         return user;
 
