@@ -19,6 +19,7 @@ public class ActionCorrectiveServiceImpl implements ActionCorrectiveService {
         return actionCorrectiveRepository.save(actionCorrective);
     }
 
+
     @Override
     public ActionCorrective getActionCorrectiveById(String id) {
         Optional<ActionCorrective> actionCorrective = actionCorrectiveRepository.findById(id);
@@ -39,11 +40,13 @@ public class ActionCorrectiveServiceImpl implements ActionCorrectiveService {
     public ActionCorrective updateActionCorrective(String id, ActionCorrective updatedActionCorrective) {
         ActionCorrective currActionCorrective = getActionCorrectiveById(id);
         if (currActionCorrective != null) {
-            currActionCorrective.setDescription(updatedActionCorrective.getDescription());
+            // Update the list of descriptions
+            currActionCorrective.setDescriptions(updatedActionCorrective.getDescriptions());
             return actionCorrectiveRepository.save(currActionCorrective);
         }
         return null;
     }
+
 
 
 
