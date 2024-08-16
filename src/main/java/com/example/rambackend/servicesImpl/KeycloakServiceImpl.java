@@ -1,7 +1,10 @@
 package com.example.rambackend.servicesImpl;
 
+import com.example.rambackend.entities.Audit;
 import com.example.rambackend.entities.Utilisateur;
 import com.example.rambackend.enums.UserRole;
+import com.example.rambackend.repository.AuditRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -11,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -23,6 +27,9 @@ public class KeycloakServiceImpl {
 
 
     private final WebClient webClient;
+
+    @Autowired
+    private AuditRepository  auditRepository;
 
 @Autowired
 public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
@@ -48,7 +55,7 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
-    public Mono<Utilisateur> createAudite(String email, String fullname) {
+    public Mono<Utilisateur> createAudite(String email, String fullname, String idAudit) {
         return getAdminToken()
                 .flatMap(token -> {
                     System.out.println("Creating user with email: " + email);
@@ -71,6 +78,16 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                             .bodyToMono(Void.class)
                             .then(getUserIdByEmail(email, token))
                             .flatMap(userId -> fetchUserDetails(userId))
+                            .flatMap(user -> Mono.fromCallable(() -> {
+                                        return auditRepository.findById(idAudit)
+                                                .map(audit -> {
+                                                    audit.setAudite(user);
+                                                    return auditRepository.save(audit);
+                                                })
+                                                .orElseThrow(() -> new EntityNotFoundException("Audit not found with ID: " + idAudit));
+                                    })
+                                    .onErrorMap(EntityNotFoundException.class, e -> new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage()))
+                                    .thenReturn(user))
                             .onErrorResume(WebClientResponseException.class, e -> {
                                 System.err.println("Error response body: " + e.getResponseBodyAsString());
                                 return Mono.error(e);
@@ -78,12 +95,11 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 })
                 .doOnNext(user -> System.out.println("Created user with ID: " + user.getId()))
                 .onErrorResume(error -> {
-                    System.err.println("Error creating user in Keycloak: " + error.getMessage());
+                    System.err.println("Error creating user in Keycloak or associating with audit: " + error.getMessage());
                     error.printStackTrace();
                     return Mono.error(error);
                 });
     }
-
     public Mono<Boolean>enableUser(String userId){
         return getAdminToken()
                 .flatMap(token -> {
