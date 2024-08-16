@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -29,10 +30,13 @@ public class UserController {
     }
 
     @PostMapping("/addAudit")
-    public Mono<Utilisateur>addAudit(@RequestBody Utilisateur user){
-        return keycloakService.createAudite(user.getEmail(),user.getFullname());
+    public Mono<ResponseEntity<Utilisateur>> addAudit(@RequestBody Utilisateur user, @RequestParam String auditId) {
+        return keycloakService.createAudite(user.getEmail(), user.getFullname(), auditId)
+                .map(ResponseEntity::ok)
+                .onErrorResume(ResponseStatusException.class, e ->
+                        Mono.just(ResponseEntity.status(e.getStatusCode()).body(null))
+                );
     }
-
     @PostMapping("/addpassword")
     public Mono<ResponseEntity<Boolean>> setPassword(@RequestBody Utilisateur user){
 
