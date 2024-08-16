@@ -52,4 +52,11 @@ public class ActionCorrectiveController {
     public void deleteActionCorrective(@PathVariable String id) {
         actionCorrectiveService.deleteActionCorrective(id);
     }
+    @GetMapping("/audit/{auditId}")
+    public ResponseEntity<List<ActionCorrective>> getActionCorrectivesByAuditId(@PathVariable String auditId) {
+        List<ActionCorrective> actionCorrectives = actionCorrectiveService.findByAuditId(auditId);
+        return ResponseEntity.ok(actionCorrectives);
+    }
+
+
 }

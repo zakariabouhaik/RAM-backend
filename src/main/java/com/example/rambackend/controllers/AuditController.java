@@ -50,7 +50,13 @@ public class AuditController {
         return audits;
     }
 
-
+    @GetMapping("/audite/{userId}")
+    public List<Audit> getAuditsByAuditeId(@PathVariable String userId) {
+        System.out.println("Fetching audits for auditeId: " + userId);
+        List<Audit> audits = auditService.findAuditsByAuditeId(userId);
+        System.out.println("Audits found: " + audits);
+        return audits;
+    }
 
 
 

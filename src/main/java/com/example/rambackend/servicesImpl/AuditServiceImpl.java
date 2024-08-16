@@ -87,4 +87,7 @@ public class AuditServiceImpl implements AuditService {
     public List<Audit> findAuditsByUserId(String userId) {
         return auditRepository.findByAuditeurId(userId);
     }
+    public List<Audit> findAuditsByAuditeId(String auditeId) {
+        return auditRepository.findByAuditeId(auditeId);
+    }
 }

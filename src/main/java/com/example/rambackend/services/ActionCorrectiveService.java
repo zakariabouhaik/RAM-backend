@@ -13,5 +13,6 @@ public interface ActionCorrectiveService {
     List<ActionCorrective> getAllActionCorrectives();
     void deleteActionCorrective(String id);
     ActionCorrective updateActionCorrective(String id, ActionCorrective actionCorrective);
+    public List<ActionCorrective> findByAuditId(String auditId);
 
 }

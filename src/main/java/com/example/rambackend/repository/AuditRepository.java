@@ -10,5 +10,6 @@ import java.util.List;
 @Repository
 public interface AuditRepository extends MongoRepository<Audit, String> {
     List<Audit> findByAuditeurId(String auditeurId);
+    List<Audit> findByAuditeId(String auditeId);
 
 }

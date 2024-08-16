@@ -47,6 +47,9 @@ public class ActionCorrectiveServiceImpl implements ActionCorrectiveService {
         return null;
     }
 
+    public List<ActionCorrective> findByAuditId(String auditId) {
+        return actionCorrectiveRepository.findByAuditId(auditId);
+    }
 
 
 

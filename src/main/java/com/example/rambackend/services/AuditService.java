@@ -14,6 +14,7 @@ public interface AuditService {
     Audit updateAudit(String id, Audit audit);
 
     public List<Audit> findAuditsByUserId(String userId);
+   public List<Audit>  findAuditsByAuditeId(String userId);
 
 
 
