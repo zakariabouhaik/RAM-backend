@@ -16,6 +16,7 @@ public class Config {
         config.addAllowedOrigin("http://localhost:3000"); // Autoriser les requêtes depuis localhost:3000
         config.addAllowedMethod("*"); // Autoriser toutes les méthodes HTTP (GET, POST, PUT, DELETE, etc.)
         config.addAllowedHeader("*"); // Autoriser tous les en-têtes
+        config.setAllowCredentials(true); // Allow credentials
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
     }
