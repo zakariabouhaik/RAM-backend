@@ -13,7 +13,6 @@ public interface NotificationService {
     List<Notification> getAllNotifications();
     Notification getNotificationById(String id);
     void deleteNotificationById(String id);
-    Notification updateNotification(String id, Notification notification);
 
 
 

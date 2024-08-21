@@ -42,25 +42,6 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.deleteById(id);
     }
 
-    @Override
-    public Notification updateNotification(String id, Notification notification) {
-        return notificationRepository.findById(id)
-
-                .map(notification1 -> {
-                    if (notification.getDesciption() != null) {
-                        notification1.setDesciption(notification.getDesciption());
-                    }
-                    if (notification.getEtatNotification() != null) {
-                        notification1.setEtatNotification(notification.getEtatNotification());
-                    }
-                    if (notification.getPriorite() != 0) {
-                        notification1.setPriorite(notification.getPriorite());
-                    }
-
-                    return notificationRepository.save(notification1);
-                })
-                .orElse(null);
-    }
 
 
 

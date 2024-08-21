@@ -4,6 +4,7 @@ import com.example.rambackend.entities.Audit;
 import com.example.rambackend.entities.Utilisateur;
 import com.example.rambackend.enums.UserRole;
 import com.example.rambackend.repository.AuditRepository;
+import com.example.rambackend.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
@@ -18,9 +19,11 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class KeycloakServiceImpl {
@@ -30,6 +33,9 @@ public class KeycloakServiceImpl {
 
     @Autowired
     private AuditRepository  auditRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
 @Autowired
 public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
@@ -55,51 +61,7 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
-    public Mono<Utilisateur> createAudite(String email, String fullname, String idAudit) {
-        return getAdminToken()
-                .flatMap(token -> {
-                    System.out.println("Creating user with email: " + email);
-                    Map<String, Object> userRepresentation = new HashMap<>();
-                    userRepresentation.put("username", email);
-                    userRepresentation.put("email", email);
-                    userRepresentation.put("enabled", false);
 
-                    Map<String, List<String>> attributes = new HashMap<>();
-                    attributes.put("Fullname", fullname != null ? List.of(fullname) : List.of());
-                    attributes.put("role", List.of(UserRole.AUDITE.toString()));
-                    userRepresentation.put("attributes", attributes);
-
-                    return webClient.post()
-                            .uri("/admin/realms/RAM/users")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .bodyValue(userRepresentation)
-                            .retrieve()
-                            .bodyToMono(Void.class)
-                            .then(getUserIdByEmail(email, token))
-                            .flatMap(userId -> fetchUserDetails(userId))
-                            .flatMap(user -> Mono.fromCallable(() -> {
-                                        return auditRepository.findById(idAudit)
-                                                .map(audit -> {
-                                                    audit.setAudite(user);
-                                                    return auditRepository.save(audit);
-                                                })
-                                                .orElseThrow(() -> new EntityNotFoundException("Audit not found with ID: " + idAudit));
-                                    })
-                                    .onErrorMap(EntityNotFoundException.class, e -> new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage()))
-                                    .thenReturn(user))
-                            .onErrorResume(WebClientResponseException.class, e -> {
-                                System.err.println("Error response body: " + e.getResponseBodyAsString());
-                                return Mono.error(e);
-                            });
-                })
-                .doOnNext(user -> System.out.println("Created user with ID: " + user.getId()))
-                .onErrorResume(error -> {
-                    System.err.println("Error creating user in Keycloak or associating with audit: " + error.getMessage());
-                    error.printStackTrace();
-                    return Mono.error(error);
-                });
-    }
     public Mono<Boolean>enableUser(String userId){
         return getAdminToken()
                 .flatMap(token -> {
@@ -152,7 +114,55 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 return Mono.just(false);
             });
     }
-    public Mono<String> createUser(String email, String fullname) {
+
+
+    public Mono<Utilisateur> createAudite(String email, String fullname, String idAudit ,String IdMongo) {
+        return getAdminToken()
+                .flatMap(token -> {
+                    System.out.println("Creating user with email: " + email);
+                    Map<String, Object> userRepresentation = new HashMap<>();
+                    userRepresentation.put("username", email);
+                    userRepresentation.put("email", email);
+                    userRepresentation.put("enabled", false);
+
+                    Map<String, List<String>> attributes = new HashMap<>();
+                    attributes.put("Fullname", fullname != null ? List.of(fullname) : List.of());
+                    attributes.put("role", List.of(UserRole.AUDITE.toString()));
+                    attributes.put("IdMongo", List.of(IdMongo));
+                    userRepresentation.put("attributes", attributes);
+
+                    return webClient.post()
+                            .uri("/admin/realms/RAM/users")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(userRepresentation)
+                            .retrieve()
+                            .bodyToMono(Void.class)
+                            .then(getUserIdByEmail(email, token))
+                            .flatMap(userId -> fetchUserDetails(userId))
+                            .flatMap(user -> Mono.fromCallable(() -> {
+                                        return auditRepository.findById(idAudit)
+                                                .map(audit -> {
+                                                    audit.setAudite(user);
+                                                    return auditRepository.save(audit);
+                                                })
+                                                .orElseThrow(() -> new EntityNotFoundException("Audit not found with ID: " + idAudit));
+                                    })
+                                    .onErrorMap(EntityNotFoundException.class, e -> new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage()))
+                                    .thenReturn(user))
+                            .onErrorResume(WebClientResponseException.class, e -> {
+                                System.err.println("Error response body: " + e.getResponseBodyAsString());
+                                return Mono.error(e);
+                            });
+                })
+                .doOnNext(user -> System.out.println("Created user with ID: " + user.getId()))
+                .onErrorResume(error -> {
+                    System.err.println("Error creating user in Keycloak or associating with audit: " + error.getMessage());
+                    error.printStackTrace();
+                    return Mono.error(error);
+                });
+    }
+    public Mono<String> createUser(String email, String fullname,String IdMongo) {
         return getAdminToken()
                 .flatMap(token -> {
                     System.out.println("Creating user with email: " + email);
@@ -164,6 +174,8 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                     Map<String, List<String>> attributes = new HashMap<>();
                     attributes.put("Fullname", fullname != null ? List.of(fullname) : List.of());
                     attributes.put("role", List.of(UserRole.AUDITEUR.toString()));
+                    attributes.put("IdMongo", List.of(IdMongo));
+
                     userRepresentation.put("attributes", attributes);
 
 
@@ -266,8 +278,88 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
-    public Mono<Utilisateur> createAndFetchUser(String email, String fullname) {
-        return createUser(email, fullname)
+    public Mono<String> getIdMongoByUserId(String userId) {
+        return getAdminToken()
+                .flatMap(token -> webClient.get()
+                        .uri("/admin/realms/RAM/users/{id}", userId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve()
+                        .bodyToMono(Map.class)
+                        .map(userDetails -> {
+                            Map<String, List<String>> attributes = (Map<String, List<String>>) userDetails.get("attributes");
+                            if (attributes != null && attributes.containsKey("IdMongo")) {
+                                List<String> idMongoList = attributes.get("IdMongo");
+                                if (!idMongoList.isEmpty()) {
+                                    return idMongoList.get(0);
+                                }
+                            }
+                            return null;
+                        })
+                )
+                .onErrorResume(e -> {
+                    System.err.println("Error fetching IdMongo for user " + userId + ": " + e.getMessage());
+                    return Mono.empty();
+                });
+    }
+
+    public Mono<Void> addNotificationToUser(String userId, String fromUserId, String message) {
+        Map<String, Object> notificationData = new HashMap<>();
+        notificationData.put("from", fromUserId);
+        notificationData.put("desciption", message);
+
+        return webClient.post()
+                .uri("http://localhost:8080/User/addNotification?userId={userId}", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(notificationData)
+                .retrieve()
+                .bodyToMono(Void.class)
+                .onErrorResume(e -> {
+                    System.err.println("Error adding notification to user: " + e.getMessage());
+                    return Mono.empty();
+                });
+    }
+
+    public Mono<Void> addNotificationToAuditeur(String auditeurId, String fromUserId) {
+        return getIdMongoByUserId(auditeurId)
+                .flatMap(idMongo -> {
+                    if (idMongo == null) {
+                        return Mono.error(new RuntimeException("IdMongo not found for auditeur"));
+                    }
+
+                    Map<String, Object> notificationData = new HashMap<>();
+                    notificationData.put("from", fromUserId);
+                    notificationData.put("desciption", "vous avez été choisi pour faire une audite");
+
+                    return webClient.post()
+                            .uri("http://localhost:8080/User/addNotification?userId={idMongo}", idMongo)
+                            .bodyValue(notificationData)
+                            .retrieve()
+                            .bodyToMono(Void.class);
+                });
+    }
+
+
+
+    public Mono<List<Map<String, Object>>> fetchNotifications(String idMongo) {
+        return Mono.fromCallable(() -> userRepository.findById(idMongo))
+                .flatMap(optionalUser -> {
+                    if (optionalUser.isPresent()) {
+                        Utilisateur user = optionalUser.get();
+                        return Mono.just(user.getNotifications().stream()
+                                .map(notification -> {
+                                    Map<String, Object> notificationMap = new HashMap<>();
+                                    notificationMap.put("dateTime", notification.getDateTime());
+                                    notificationMap.put("description", notification.getDesciption());
+                                    return notificationMap;
+                                })
+                                .collect(Collectors.toList()));
+                    } else {
+                        return Mono.just(Collections.emptyList());
+                    }
+                });
+    }
+    public Mono<Utilisateur> createAndFetchUser(String email, String fullname,String IdMongo) {
+        return createUser(email, fullname, IdMongo)
                 .flatMap(userId -> fetchUserDetails(userId));
     }
 
@@ -326,6 +418,9 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
         user.setEmail((String) userDetails.get("email"));
         user.setEnabled((Boolean) userDetails.get("enabled"));
         user.setRole(UserRole.valueOf(getAttributeValue(userDetails, "role")));
+        user.setIdMongo(getAttributeValue(userDetails, "IdMongo"));
+
+
         return user;
 
     }

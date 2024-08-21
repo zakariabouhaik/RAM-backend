@@ -11,6 +11,7 @@ import com.example.rambackend.repository.ReponseRepository;
 import com.example.rambackend.services.AuditService;
 import com.example.rambackend.services.ReponseService;
 import com.example.rambackend.servicesImpl.EmailService;
+import com.example.rambackend.servicesImpl.KeycloakServiceImpl;
 import com.example.rambackend.servicesImpl.PdfService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.io.ByteArrayInputStream;
 import java.util.*;
@@ -38,6 +40,9 @@ public class ReponseController {
 
     @Autowired
     private AmazonS3 s3client;
+
+    @Autowired
+    private KeycloakServiceImpl keycloakService;
 
     private static final String BUCKET_NAME = "ram-rapports";
     private static final String AUDITE_FOLDER = "Audite/";
@@ -81,7 +86,40 @@ public class ReponseController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur lors de l'envoi de l'email : " + e.getMessage());
         }
     }
+    @PostMapping("/send-notifications")
+    public Mono<ResponseEntity<Void>> sendNotifications(@RequestBody Map<String, String> requestBody) {
+        String reponseId = requestBody.get("reponseId");
+        String auditId = requestBody.get("auditId");
+        String message = requestBody.get("message");
 
+        return Mono.fromCallable(() -> auditService.getAuditById(auditId))
+                .flatMap(audit -> {
+                    if (audit == null) {
+                        return Mono.just(ResponseEntity.notFound().<Void>build());
+                    }
+
+                    String adminId = "66c24a34556fca12b8653199";
+                    String auditeurId = audit.getAuditeur().getId();
+                    String auditeKeycloakId = audit.getAudite().getId();
+
+                    return keycloakService.getIdMongoByUserId(auditeKeycloakId)
+                            .flatMap(auditeMongoId -> {
+                                if (auditeMongoId == null) {
+                                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).<Void>build());
+                                }
+
+                                return Mono.when(
+                                        keycloakService.addNotificationToUser(adminId, auditeurId, message),
+                                        keycloakService.addNotificationToUser(auditeMongoId, auditeurId, message)
+                                ).then(Mono.just(ResponseEntity.ok().<Void>build()));
+                            });
+                })
+                .onErrorResume(e -> {
+                    // Log the error
+                    System.err.println("Error sending notifications: " + e.getMessage());
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).<Void>build());
+                });
+    }
     @GetMapping
     public List<Reponse> getAllReponses() {
         return reponseService.getAllReponses();
