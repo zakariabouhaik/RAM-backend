@@ -41,5 +41,22 @@ public class ActionCorrectiveStatusServiceImpl implements ActionCorrectiveStatus
             repository.save(status);
         }
     }
+
+
+    @Override
+    public void markAsSent(String userId, String auditId) {
+        ActionCorrectiveStatus status = repository.findByUserIdAndAuditId(userId, auditId)
+                .orElseThrow(() -> new RuntimeException("Status not found"));
+        status.setSent(true);
+        repository.save(status);
+    }
+
+    @Override
+    public boolean isSent(String userId, String auditId) {
+        return repository.findByUserIdAndAuditId(userId, auditId)
+                .map(ActionCorrectiveStatus::isSent)
+                .orElse(false);
+    }
+
 }
 

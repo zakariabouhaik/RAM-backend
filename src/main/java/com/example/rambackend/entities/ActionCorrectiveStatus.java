@@ -14,4 +14,5 @@ public class ActionCorrectiveStatus {
     private String userId;
     private String auditId;
     private Map<String, Boolean> actionsState;
+    private boolean sent;
 }

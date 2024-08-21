@@ -11,4 +11,6 @@ public interface ActionCorrectiveStatusService {
     public ActionCorrectiveStatus updateStatus(ActionCorrectiveStatus status);
     public void saveAll(List<ActionCorrectiveStatus> actionCorrectiveStatuses);
     public void saveOrUpdate(ActionCorrectiveStatus status) ;
+    public void markAsSent(String userId, String auditId);
+    public boolean isSent(String userId, String auditId);
     }

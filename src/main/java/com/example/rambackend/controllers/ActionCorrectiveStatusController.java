@@ -33,5 +33,20 @@ public class ActionCorrectiveStatusController {
         }
     }
 
+    @PostMapping("/markAsSent/{userId}/{auditId}")
+    public ResponseEntity<?> markAsSent(@PathVariable String userId, @PathVariable String auditId) {
+        try {
+            actionCorrectiveStatusService.markAsSent(userId, auditId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/isSent/{userId}/{auditId}")
+    public ResponseEntity<Boolean> isSent(@PathVariable String userId, @PathVariable String auditId) {
+        boolean sent = actionCorrectiveStatusService.isSent(userId, auditId);
+        return ResponseEntity.ok(sent);
+    }
 
 }
