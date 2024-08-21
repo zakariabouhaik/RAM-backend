@@ -10,6 +10,7 @@ import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 @Data
 @Document
@@ -23,4 +24,8 @@ public class Utilisateur {
     private String mdp;
     private UserRole role;
     private Boolean Enabled;
+    private String IdMongo;
+    private List<Notification>notifications;
+
+
 }

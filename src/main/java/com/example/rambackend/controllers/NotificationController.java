@@ -32,10 +32,6 @@ public class NotificationController {
         return notificationService.getAllNotifications();
     }
 
-    @PutMapping("/{id}")
-    public Notification EditNotification (@PathVariable String id, @RequestBody Notification notification){
-        return notificationService.updateNotification(id,notification);
-    }
 
 
     @DeleteMapping("/{id}")
