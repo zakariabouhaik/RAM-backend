@@ -525,5 +525,23 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
+    public Flux<Utilisateur> getAdminUsers() {
+        return getAdminToken()
+                .flatMapMany(token -> webClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/admin/realms/RAM/users")
+                                .queryParam("role", "admin") // Adjust query parameters as needed
+                                .build())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve()
+                        .bodyToFlux(new ParameterizedTypeReference<Map<String, Object>>() {})
+                        .map(this::mapToUtilisateur)
+                        .filter(user -> UserRole.ADMIN.equals(user.getRole())) // Adjust as needed
+                )
+                .onErrorResume(e -> {
+                    System.err.println("Error fetching admin users from Keycloak: " + e.getMessage());
+                    return Flux.empty();
+                });
+    }
 
 }
