@@ -19,16 +19,21 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
 public class KeycloakServiceImpl {
 
-
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final WebClient webClient;
 
     @Autowired
@@ -144,7 +149,9 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                                         return auditRepository.findById(idAudit)
                                                 .map(audit -> {
                                                     audit.setAudite(user);
-                                                    return auditRepository.save(audit);
+                                                    auditRepository.save(audit);
+                                                    scheduleAccountDeactivation(user.getId(),user.getCreatedTimestamp());
+                                                    return user;
                                                 })
                                                 .orElseThrow(() -> new EntityNotFoundException("Audit not found with ID: " + idAudit));
                                     })
@@ -162,6 +169,39 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                     return Mono.error(error);
                 });
     }
+    private void scheduleAccountDeactivation(String userId, Long createdTimestamp) {
+        if (createdTimestamp == null) {
+            System.err.println("Created timestamp is null for user " + userId);
+            return;
+        }
+
+        Instant creationTime = Instant.ofEpochMilli(createdTimestamp);
+        Instant deactivationTime = creationTime.plus(60, ChronoUnit.DAYS);
+        long delayInMillis = Instant.now().until(deactivationTime, ChronoUnit.MILLIS);
+
+        if (delayInMillis > 0) {
+            scheduler.schedule(() -> deactivateAccount(userId), delayInMillis, TimeUnit.MILLISECONDS);
+        } else {
+            System.out.println("Account " + userId + " is already past the deactivation date. Deactivating now.");
+            deactivateAccount(userId);
+        }
+    }
+    private void deactivateAccount(String userId) {
+        getAdminToken()
+                .flatMap(token -> webClient.put()
+                        .uri("/admin/realms/RAM/users/{id}", userId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(Map.of("enabled", false))
+                        .retrieve()
+                        .bodyToMono(Void.class))
+                .subscribe(
+                        null,
+                        error -> System.err.println("Error deactivating account: " + error.getMessage())
+                );
+    }
+
+
     public Mono<String> createUser(String email, String fullname,String IdMongo) {
         return getAdminToken()
                 .flatMap(token -> {
@@ -419,6 +459,7 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
         user.setEnabled((Boolean) userDetails.get("enabled"));
         user.setRole(UserRole.valueOf(getAttributeValue(userDetails, "role")));
         user.setIdMongo(getAttributeValue(userDetails, "IdMongo"));
+        user.setCreatedTimestamp((Long)userDetails.get("createdTimestamp"));
 
 
         return user;
@@ -443,6 +484,7 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                             // Mise à jour des attributs
                             attributes.put("Fullname", List.of((String) updates.getOrDefault("fullname", existingUser.getFullname())));
                             attributes.put("role", List.of(updates.containsKey("role") ? updates.get("role").toString() : existingUser.getRole().toString()));
+                            attributes.put("IdMongo", List.of(existingUser.getIdMongo()));
                             userRepresentation.put("attributes", attributes);
 
                             System.out.println("Sending update to Keycloak: " + userRepresentation);

@@ -57,6 +57,13 @@ public class ReponseController {
         Reponse savedReponse = reponseService.saveReponse(reponse);
         return ResponseEntity.ok(savedReponse);
     }
+
+    @PostMapping("/save")
+    public ResponseEntity<Reponse> saveReponse(@RequestBody Reponse reponse) {
+        Reponse savedReponse = reponseService.saveReponse(reponse);
+        return ResponseEntity.ok(savedReponse);
+    }
+
     @PostMapping("/send-pdf-email2")
     public ResponseEntity<String> sendPdfEmail2(@RequestBody Map<String, String> requestBody) {
         String reponseId = requestBody.get("reponseId");
@@ -165,6 +172,18 @@ public class ReponseController {
         }
     }
 
+    @PutMapping("/finalize/{id}")
+    public ResponseEntity<Reponse> finalizeReponse(@PathVariable String id) {
+        Reponse reponse = reponseService.getReponseById(id);
+        if (reponse == null) {
+            return ResponseEntity.notFound().build();
+        }
+        reponse.setTemporary(false);
+        Reponse updatedReponse = reponseService.updateReponse(id,reponse);
+        return ResponseEntity.ok(updatedReponse);
+    }
+
+
     @PostMapping("/save-pdf")
     public ResponseEntity<String> savePdf(@RequestBody Map<String, String> request) {
         String rapportId = request.get("rapportId");
@@ -204,6 +223,15 @@ public class ReponseController {
 
         PutObjectRequest putObjectRequest = new PutObjectRequest(BUCKET_NAME,key,new ByteArrayInputStream(content),metadata);
         s3client.putObject(putObjectRequest);
+    }
+
+    @GetMapping("/audit/{auditId}")
+    public ResponseEntity<Reponse> getReponseByAuditId(@PathVariable String auditId) {
+        Reponse reponse = reponseService.getReponseByAuditId(auditId);
+        if (reponse == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(reponse);
     }
 
 

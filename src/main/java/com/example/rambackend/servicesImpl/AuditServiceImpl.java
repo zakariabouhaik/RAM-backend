@@ -61,14 +61,23 @@ public class AuditServiceImpl implements AuditService {
     @Override
     public Audit updateAudit(String id, Audit audit) {
         Audit currAudit = getAuditById(id);
-        currAudit.setEscaleVille(audit.getEscaleVille());
-        currAudit.setDateProgramme(audit.getDateProgramme());
-        currAudit.setDateDebut(audit.getDateDebut());
-        currAudit.setDateFin(audit.getDateFin());
+
+
+        if (audit.getEscaleVille() != null) currAudit.setEscaleVille(audit.getEscaleVille());
+        if (audit.getDateProgramme() != null) currAudit.setDateProgramme(audit.getDateProgramme());
+        if (audit.getDateDebut() != null) currAudit.setDateDebut(audit.getDateDebut());
+        if (audit.getDateFin() != null) currAudit.setDateFin(audit.getDateFin());
         currAudit.setArchivee(audit.isArchivee());
-        currAudit.setFormulaire(audit.getFormulaire());
-        currAudit.setRapportAdmin(audit.getRapportAdmin());
-        currAudit.setRapportAction(audit.getRapportAction());
+        if (audit.getRapportAdmin() != null) currAudit.setRapportAdmin(audit.getRapportAdmin());
+        if (audit.getRapportAction() != null) currAudit.setRapportAction(audit.getRapportAction());
+
+
+        if (audit.getFormulaire() != null && !audit.getFormulaire().getId().equals(currAudit.getFormulaire().getId())) {
+            Formulaire formulaire = formulaireRepository.findById(audit.getFormulaire().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Formulaire not found"));
+            currAudit.setFormulaire(formulaire);
+        }
+
 
         if (audit.getAuditeur() != null && !audit.getAuditeur().getId().equals(currAudit.getAuditeur().getId())) {
             return keycloakService.getUserById(audit.getAuditeur().getId())
@@ -76,12 +85,11 @@ public class AuditServiceImpl implements AuditService {
                         currAudit.setAuditeur(utilisateur);
                         return auditRepository.save(currAudit);
                     })
-                    .block(); // Bloque pour obtenir le résultat, considérez d'utiliser Mono/Flux si possible
+                    .block();
         } else {
             return auditRepository.save(currAudit);
         }
     }
-
 
 
     public List<Audit> findAuditsByUserId(String userId) {

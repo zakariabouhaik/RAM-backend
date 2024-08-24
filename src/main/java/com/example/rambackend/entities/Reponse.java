@@ -21,5 +21,6 @@ public class Reponse {
     private Audit audit;
     @JsonDeserialize(using = ReponseListDeserializer.class)
     private List<RegleReponse> reponses;
+    private boolean temporary = true;
 
 }
