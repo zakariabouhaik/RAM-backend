@@ -11,4 +11,5 @@ public interface ReponseService {
     Reponse getReponseById(String id);
     Reponse updateReponse(String id, Reponse reponse);
     void deleteReponseById(String id);
+    Reponse getReponseByAuditId(String auditId);
 }

@@ -25,6 +25,7 @@ public class Utilisateur {
     private UserRole role;
     private Boolean Enabled;
     private String IdMongo;
+    private Long createdTimestamp;
     private List<Notification>notifications;
 
 
