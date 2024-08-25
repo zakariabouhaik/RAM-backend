@@ -256,4 +256,14 @@ public class UserController {
     }
 
 
+    @GetMapping("/admins")
+    public Mono<ResponseEntity<List<Utilisateur>>> getAdminUsers() {
+        return keycloakService.getAdminUsers()
+                .collectList() // Collect Flux to List
+                .map(users -> ResponseEntity.ok(users))
+                .onErrorResume(e -> {
+                    System.err.println("Error fetching admin users: " + e.getMessage());
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of()));
+                });
+    }
 }

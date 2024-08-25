@@ -13,7 +13,7 @@ public class S3Config {
 
 
     public void s3Client() {
-      
+
     }
 
 }
