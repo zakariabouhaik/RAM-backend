@@ -28,20 +28,7 @@ public class ChatMessageService {
         return chatMessageRepository.findAll();
     }
     ///////////////////////////////////////////////////////////////////////
-    public List<ChatMessage> getConversation(String senderId, String receiverId) {
-        return chatMessageRepository.findBySenderIdAndReceiverIdOrReceiverIdAndSenderId(
-                senderId, receiverId, receiverId, senderId);
-    }
 
-    public ChatMessage sendMessage(String senderId, String receiverId, String content, ChatMessage.MessageType type) {
-        ChatMessage message = new ChatMessage();
-        message.setSenderId(senderId);
-        message.setReceiverId(receiverId);
-        message.setContent(content);
-        message.setType(type); // This should now work
-        message.setTimestamp(LocalDateTime.now());
-        return chatMessageRepository.save(message);
-    }
 
 
 

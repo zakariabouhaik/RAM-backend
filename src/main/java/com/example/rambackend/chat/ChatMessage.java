@@ -20,6 +20,7 @@ public class ChatMessage {
     private String content;
     private MessageType type;
     private LocalDateTime timestamp;
+    private boolean read;
 
     public enum MessageType {
         CHAT, JOIN, LEAVE

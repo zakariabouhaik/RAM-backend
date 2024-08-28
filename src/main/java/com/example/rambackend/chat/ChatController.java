@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -23,39 +24,17 @@ private ChatMessageService chatService;
     private SimpMessagingTemplate messagingTemplate;
     @Autowired
     private TranslationService translationService;
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
 
-    /*@MessageMapping("/message")
-    public void handleMessage(ChatMessage chatMessage) {
-        chatService.saveMessage(chatMessage);
-        messagingTemplate.convertAndSend("/chatroom/public", chatMessage);
-    }*/
-    /*@MessageMapping("/message")
-    public void sendMessage(@Payload ChatMessage chatMessage) {
-        if (chatMessage.getType().equals(ChatMessage.MessageType.CHAT)) {
-            chatService.saveMessage(chatMessage); // Save message to the database
 
-            if (chatMessage.getReceiver() != null && !chatMessage.getReceiver().isEmpty()) {
-                messagingTemplate.convertAndSendToUser(chatMessage.getReceiver(), "/queue/private", chatMessage);
-            } else {
-                messagingTemplate.convertAndSend("/topic/public", chatMessage);
-            }
-        }
-    }*/
 
     @GetMapping("/messages")
     public List<ChatMessage> getAllMessages() {
         return chatService.getAllMessages();
     }
-    /*
-    @Autowired
-    private SimpMessagingTemplate simpMessagingTemplate;
 
-    @MessageMapping("/message")
-    @SendTo("/chatroom/public")
-    public ChatMessage receiveMessage(@Payload ChatMessage message){
-        return message;
-    }
-*/
+
     @PostMapping("/translate")
     public ResponseEntity<String> translateMessage(@RequestBody Map<String, Object> request) {
         String message = (String) ((Map<String, Object>) request.get("message")).get("content");
@@ -85,6 +64,27 @@ private ChatMessageService chatService;
         }
     }
 
+    @PutMapping("/messages/{id}/read")
+    public ResponseEntity<?> markMessageAsRead(@PathVariable String id) {
+        // Find the message by ID
+        Optional<ChatMessage> optionalMessage = chatMessageRepository.findById(id);
 
+        // Check if the message exists
+        if (optionalMessage.isPresent()) {
+            ChatMessage message = optionalMessage.get();
+            message.setRead(true);
+            chatMessageRepository.save(message);
+            return ResponseEntity.ok().build();
+        } else {
+            // Return a 404 Not Found status if the message is not found
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/messages/unread")
+    public ResponseEntity<List<ChatMessage>> getUnreadMessages(@RequestParam String receiverId) {
+        List<ChatMessage> unreadMessages = chatMessageRepository.findByReceiverIdAndRead(receiverId, false);
+        return ResponseEntity.ok(unreadMessages);
+    }
 
 }
