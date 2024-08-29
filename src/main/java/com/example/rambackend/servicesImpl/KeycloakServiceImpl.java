@@ -240,6 +240,44 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                     return Mono.error(error);
                 });
     }
+    public Mono<String> createAdmin(String email, String fullname,String IdMongo) {
+        return getAdminToken()
+                .flatMap(token -> {
+                    System.out.println("Creating user with email: " + email);
+                    Map<String, Object> userRepresentation = new HashMap<>();
+                    userRepresentation.put("username", email);
+                    userRepresentation.put("email", email);
+                    userRepresentation.put("enabled", true);
+
+                    Map<String, List<String>> attributes = new HashMap<>();
+                    attributes.put("Fullname", fullname != null ? List.of(fullname) : List.of());
+                    attributes.put("role", List.of(UserRole.ADMIN.toString()));
+                    attributes.put("IdMongo", List.of(IdMongo));
+
+                    userRepresentation.put("attributes", attributes);
+
+
+
+                    return webClient.post()
+                            .uri("/admin/realms/RAM/users")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(userRepresentation)
+                            .retrieve()
+                            .bodyToMono(Void.class)
+                            .then(getUserIdByEmail(email, token))
+                            .onErrorResume(WebClientResponseException.class, e -> {
+                                System.err.println("Error response body: " + e.getResponseBodyAsString());
+                                return Mono.error(e);
+                            });
+                })
+                .doOnNext(userId -> System.out.println("Created user with ID: " + userId))
+                .onErrorResume(error -> {
+                    System.err.println("Error creating user in Keycloak: " + error.getMessage());
+                    error.printStackTrace();
+                    return Mono.error(error);
+                });
+    }
 
     public Mono<Utilisateur> getUserById(String id) {
         return getAdminToken()
@@ -342,6 +380,24 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
+    public Mono<Long> getUnreadNotificationCount(String idMongo) {
+        return Mono.fromCallable(() -> {
+            Utilisateur user = userRepository.findById(idMongo)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            return user.getNotifications().stream()
+                    .filter(notification -> !notification.isRead())
+                    .count();
+        });
+    }
+
+    public Mono<Void> markNotificationsAsRead(String idMongo) {
+        return Mono.fromRunnable(() -> {
+            Utilisateur user = userRepository.findById(idMongo)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            user.getNotifications().forEach(notification -> notification.setRead(true));
+            userRepository.save(user);
+        });
+    }
     public Mono<Void> addNotificationToUser(String userId, String fromUserId, String message) {
         Map<String, Object> notificationData = new HashMap<>();
         notificationData.put("from", fromUserId);
@@ -390,6 +446,7 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                                     Map<String, Object> notificationMap = new HashMap<>();
                                     notificationMap.put("dateTime", notification.getDateTime());
                                     notificationMap.put("description", notification.getDesciption());
+                                    notificationMap.put("read", notification.isRead());
                                     return notificationMap;
                                 })
                                 .collect(Collectors.toList()));
@@ -400,6 +457,10 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
     }
     public Mono<Utilisateur> createAndFetchUser(String email, String fullname,String IdMongo) {
         return createUser(email, fullname, IdMongo)
+                .flatMap(userId -> fetchUserDetails(userId));
+    }
+    public Mono<Utilisateur> createAndFetchAdmin(String email, String fullname,String IdMongo) {
+        return createAdmin(email, fullname, IdMongo)
                 .flatMap(userId -> fetchUserDetails(userId));
     }
 
