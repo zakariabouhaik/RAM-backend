@@ -34,12 +34,18 @@ public class AuditServiceImpl implements AuditService {
                 .orElseThrow(() -> new EntityNotFoundException("Formulaire not found"));
 
         return keycloakService.getUserById(audit.getAuditeur().getId())
-                .map(utilisateur -> {
+                .flatMap(utilisateur -> {
                     audit.setFormulaire(formulaire);
                     audit.setAuditeur(utilisateur);
-                    return auditRepository.save(audit);
+                    Audit savedAudit = auditRepository.save(audit);
+
+                    String message = "Vous avez été choisi pour effectuer un audit à " + audit.getEscaleVille() + " du " + audit.getDateDebut() + " au " + audit.getDateFin();
+
+                    return keycloakService.addNotificationToUser(utilisateur.getIdMongo(), utilisateur.getId(), message)
+                            .thenReturn(savedAudit);
+
                 })
-                .block(); // Bloque pour obtenir le résultat, considérez d'utiliser Mono/Flux si possible
+                .block();
     }
     @Override
     public List<Audit> getAllAudits() {

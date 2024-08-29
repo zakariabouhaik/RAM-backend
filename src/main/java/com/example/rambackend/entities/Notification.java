@@ -17,6 +17,7 @@ public class Notification {
     private Utilisateur from;
     private LocalDateTime dateTime= LocalDateTime.now();
     private String desciption;
+    private boolean isRead = false;
 
 
 }

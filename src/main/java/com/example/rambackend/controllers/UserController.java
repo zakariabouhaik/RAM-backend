@@ -55,7 +55,39 @@ public class UserController {
                     return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
                 });
     }
+    @PostMapping("/addadmin")
+    public Mono<ResponseEntity<Utilisateur>> addAdmin(@RequestBody Utilisateur user) {
+        return Mono.fromCallable(() -> {
+                    Notification notif = new Notification();
+                    notif.setDesciption("Bienvenue à votre portail d'audit");
+                    Utilisateur utilisateur = new Utilisateur();
+                    utilisateur.setNotifications(Collections.singletonList(notif));
+                    return userRepository.save(utilisateur);
+                })
+                .flatMap(savedUtilisateur ->
+                        keycloakService.createAndFetchAdmin(user.getEmail(), user.getFullname(), savedUtilisateur.getId())
 
+                )
+                .map(ResponseEntity::ok)
+                .onErrorResume(e -> {
+                    System.err.println("Error creating user: " + e.getMessage());
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                });
+    }
+
+    @GetMapping("/unreadNotificationCount")
+    public Mono<ResponseEntity<Long>> getUnreadNotificationCount(@RequestParam String idMongo) {
+        return keycloakService.getUnreadNotificationCount(idMongo)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/markNotificationsAsRead")
+    public Mono<ResponseEntity<Void>> markNotificationsAsRead(@RequestParam String idMongo) {
+        return keycloakService.markNotificationsAsRead(idMongo)
+                .then(Mono.just(ResponseEntity.ok().<Void>build()))
+                .onErrorResume(e -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()));
+    }
     @PostMapping("/addAudit")
     public Mono<ResponseEntity<Utilisateur>> addAudit(@RequestBody Utilisateur user, @RequestParam String auditId) {
         return  Mono.fromCallable(() -> {
