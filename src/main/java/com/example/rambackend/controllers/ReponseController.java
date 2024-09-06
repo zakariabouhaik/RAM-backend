@@ -16,7 +16,9 @@ import com.example.rambackend.servicesImpl.PdfService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
@@ -64,35 +66,10 @@ public class ReponseController {
         return ResponseEntity.ok(savedReponse);
     }
 
-    @PostMapping("/send-pdf-email2")
-    public ResponseEntity<String> sendPdfEmail2(@RequestBody Map<String, String> requestBody) {
-        String reponseId = requestBody.get("reponseId");
-
-        Reponse reponse = reponseService.getReponseById(reponseId);
-        if (reponse == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reponse not found with id " + reponseId);
-        }
-
-        try {
-            Audit audit = reponse.getAudit();
-            byte[] pdfBytes = pdfService.generatePdf(audit, reponse.getReponses());
-            String filename = "rapport_audit_" + audit.getId() + ".pdf";
-
-            String s3Key = ADMIN_FOLDER+filename;
-            uploadToS3(pdfBytes,s3Key);
 
 
-            String to = "zakariayoza123@gmail.com";
-            String subject = "Rapport d'audit - " + audit.getEscaleVille();
-            String text = "Veuillez trouver ci-joint le rapport d'audit pour " + audit.getEscaleVille() + ".";
 
-            emailService.sendEmailWithAttachment(to, subject, text, pdfBytes, filename);
 
-            return ResponseEntity.ok("Email envoyé à zakariayoza123@gmail.com");
-        } catch (MessagingException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur lors de l'envoi de l'email : " + e.getMessage());
-        }
-    }
     @PostMapping("/send-notifications")
     public Mono<ResponseEntity<Void>> sendNotifications(@RequestBody Map<String, String> requestBody) {
         String reponseId = requestBody.get("reponseId");
@@ -148,29 +125,34 @@ public class ReponseController {
     }
 
     @PostMapping("/send-pdf-email")
-    public ResponseEntity<String> sendPdfEmail(@RequestBody Map<String, String> requestBody) {
+    public ResponseEntity<String> sendPdfEmailAdmin(@RequestBody Map<String, String> requestBody) {
         String reponseId = requestBody.get("reponseId");
-
         Reponse reponse = reponseService.getReponseById(reponseId);
         if (reponse == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reponse not found with id " + reponseId);
         }
 
         try {
-            byte[] pdfBytes = pdfService.generatePdfBytesForReponse(reponse);
-            String filename = "reponse_" + reponseId + ".pdf";
+            byte[] pdfBytes = pdfService.generatePdf(reponse);
+            String filename = "rapport_audit_admin_" + reponse.getAudit().getId() + ".pdf";
 
-            String s3Key = AUDITE_FOLDER + filename;
-            uploadToS3(pdfBytes,s3Key);
+            // Sauvegarde dans S3
+            String s3Key = ADMIN_FOLDER + filename;
+            uploadToS3(pdfBytes, s3Key);
 
+            // Envoi de l'email à l'admin
+            String to = "zakariayoza123@example.com";
+            String subject = "Rapport d'audit (Admin) - " + reponse.getAudit().getEscaleVille();
+            String text = "Veuillez trouver ci-joint le rapport d'audit administratif pour " + reponse.getAudit().getEscaleVille() + ".";
 
-            emailService.sendEmailWithAttachment("dalalaziz16@gmail.com", "Objet de l'Email", "Contenu de l'Email", pdfBytes, filename);
+            emailService.sendEmailWithAttachment(to, subject, text, pdfBytes, filename);
 
-            return ResponseEntity.ok("Email envoyé");
+            return ResponseEntity.ok("Admin email sent successfully");
         } catch (MessagingException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur lors de l'envoi de l'email : " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error sending admin email: " + e.getMessage());
         }
     }
+
 
     @PutMapping("/finalize/{id}")
     public ResponseEntity<Reponse> finalizeReponse(@PathVariable String id) {
@@ -182,30 +164,53 @@ public class ReponseController {
         Reponse updatedReponse = reponseService.updateReponse(id,reponse);
         return ResponseEntity.ok(updatedReponse);
     }
-
-
     @PostMapping("/save-pdf")
-    public ResponseEntity<String> savePdf(@RequestBody Map<String, String> request) {
-        String rapportId = request.get("rapportId");
-        if (rapportId == null || rapportId.isEmpty()) {
+    public ResponseEntity<?> generateAndSavePdf(@RequestBody Map<String, String> requestBody) {
+        String reponseId = requestBody.get("rapportId");
+        if (reponseId == null || reponseId.isEmpty()) {
             return ResponseEntity.badRequest().body("Invalid reponseId");
         }
 
         try {
-            Optional<Reponse> reponseOptional = reponseRepository.findById(rapportId);
-            if (!reponseOptional.isPresent()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reponse not found with id " + rapportId);
+            Reponse reponse = reponseService.getReponseById(reponseId);
+            if (reponse == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Reponse not found with id " + reponseId);
             }
 
-            Reponse reponse = reponseOptional.get();
-            Audit audit = reponse.getAudit();
-            byte[] pdfBytes = pdfService.generatePdf(audit, reponse.getReponses());
-            String filename = "reponse_" + rapportId + ".pdf";
-            RapportAudite savedRapportAudite = pdfService.savePdfToRapportAudite(pdfBytes, filename);
+            // Générer le PDF une seule fois
+            byte[] pdfBytes = pdfService.generatePdf(reponse);
 
-            return ResponseEntity.ok("PDF saved successfully with ID: " + savedRapportAudite.getId());
+            // Nom du fichier
+            String filename = "rapport_audit_" + reponse.getAudit().getId() + ".pdf";
+
+            // Sauvegarde dans S3 - dossier Audite
+            String auditeS3Key = AUDITE_FOLDER + filename;
+            uploadToS3(pdfBytes, auditeS3Key);
+
+            // Sauvegarde dans S3 - dossier Admin
+            String adminS3Key = ADMIN_FOLDER + filename;
+            uploadToS3(pdfBytes, adminS3Key);
+
+            // Sauvegarde dans la base de données
+
+            // Préparer la réponse HTTP
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("filename", filename);
+
+            String to = "zakariayoza123@gmail.com";
+            String subject = "Rapport d'audit (Admin) - " + reponse.getAudit().getEscaleVille();
+            String text = "Veuillez trouver ci-joint le rapport d'audit administratif pour " + reponse.getAudit().getEscaleVille() + ".";
+
+            emailService.sendEmailWithAttachment(to, subject, text, pdfBytes, filename);
+
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfBytes);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error saving PDF: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error generating and saving PDF: " + e.getMessage());
         }
     }
 
@@ -216,14 +221,17 @@ public class ReponseController {
 
 
 
-    private void uploadToS3 (byte[] content,String key){
+
+
+    private void uploadToS3(byte[] content, String key) {
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(content.length);
         metadata.setContentType("application/pdf");
 
-        PutObjectRequest putObjectRequest = new PutObjectRequest(BUCKET_NAME,key,new ByteArrayInputStream(content),metadata);
+        PutObjectRequest putObjectRequest = new PutObjectRequest(BUCKET_NAME, key, new ByteArrayInputStream(content), metadata);
         s3client.putObject(putObjectRequest);
     }
+
 
     @GetMapping("/audit/{auditId}")
     public ResponseEntity<Reponse> getReponseByAuditId(@PathVariable String auditId) {

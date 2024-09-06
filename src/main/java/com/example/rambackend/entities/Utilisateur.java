@@ -17,6 +17,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Utilisateur {
+
     @Id
     private String id;
     private String Fullname;
@@ -26,7 +27,8 @@ public class Utilisateur {
     private Boolean Enabled;
     private String IdMongo;
     private Long createdTimestamp;
+    private String emploi;
+    private String phonenumber;
     private List<Notification>notifications;
-
 
 }

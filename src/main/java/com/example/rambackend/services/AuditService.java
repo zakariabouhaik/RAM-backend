@@ -1,6 +1,8 @@
 package com.example.rambackend.services;
 
 import com.example.rambackend.entities.Audit;
+import com.example.rambackend.entities.Generalities;
+import com.example.rambackend.entities.PersonneRencontrees;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,8 +15,16 @@ public interface AuditService {
     void deleteAuditById(String id);
     Audit updateAudit(String id, Audit audit);
 
-    public List<Audit> findAuditsByUserId(String userId);
-   public List<Audit>  findAuditsByAuditeId(String userId);
+     List<Audit> findAuditsByUserId(String userId);
+     List<Audit>  findAuditsByAuditeId(String userId);
+
+     Audit saveGeneralitie(String id, Generalities generalities);
+
+     Audit sendGeneralities(String id);
+    Audit savePersonnesRencontrees(String id, List<PersonneRencontrees> personnes);
+
+
+
 
 
 

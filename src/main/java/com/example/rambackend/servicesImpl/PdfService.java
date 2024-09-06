@@ -2,13 +2,17 @@ package com.example.rambackend.servicesImpl;
 
 
 import com.example.rambackend.entities.*;
+import com.example.rambackend.enums.ReponseType;
 import com.example.rambackend.repository.RapportAuditeRepository;
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
+import java.time.format.DateTimeFormatter;
+
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
+import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Image;
 import com.itextpdf.layout.element.Paragraph;
@@ -39,7 +43,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -58,75 +64,213 @@ public class PdfService {
     @Autowired
     private RapportAuditeRepository rapportAuditeRepository;
 
-    public byte[] generatePdf(Audit audit, List<RegleReponse> reponses) {
+
+    public byte[] generatePdf(Reponse reponse) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PdfWriter writer = new PdfWriter(baos);
+        PdfDocument pdf = new PdfDocument(writer);
+        Document document = new Document(pdf, PageSize.A4);
 
         try {
-            PdfWriter writer = new PdfWriter(baos);
-            PdfDocument pdf = new PdfDocument(writer);
-            Document document = new Document(pdf, PageSize.A4);
-
-
-            Image logo = new Image(ImageDataFactory.create(new ClassPathResource("static/images/logo.png").getURL()));
-            logo.setWidth(100);
-            logo.setHorizontalAlignment(HorizontalAlignment.CENTER);
-            document.add(logo);
-
-
-            // Ajout du titre
-            Paragraph title = new Paragraph("Rapport d'Audit")
-                    .setFontSize(18)
-                    .setBold()
-                    .setTextAlignment(TextAlignment.CENTER);
-            document.add(title);
-
-            // Formatage des dates
-            String dateDebut = formatDate(audit.getDateDebut());
-            String dateFin = formatDate(audit.getDateFin());
-
-
-            Paragraph info = new Paragraph(
-                    "Auditeur: " + audit.getAuditeur().getFullname() + "\n" +
-                            "Ville d'escale: " + audit.getEscaleVille() + "\n" +
-                            "Date de début: " + dateDebut + "\n" +
-                            "Date de fin: " + dateFin
-            )
-                    .setFontSize(12)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginBottom(20);
-            document.add(info);
-
-            // Création du tableau
-            float[] columnWidths = {300F, 100F};
-            Table table = new Table(columnWidths);
-            table.setHorizontalAlignment(HorizontalAlignment.CENTER);
-
-            // En-têtes du tableau
-            table.addHeaderCell(new Cell().add(new Paragraph("Règle").setTextAlignment(TextAlignment.CENTER).setBold()));
-            table.addHeaderCell(new Cell().add(new Paragraph("Réponse").setTextAlignment(TextAlignment.CENTER).setBold()));
-
-            // Ajout des règles et réponses au tableau
-            for (RegleReponse regleReponse : reponses) {
-                table.addCell(new Cell().add(new Paragraph(regleReponse.getRegle().getDescription())));
-                String reponseText = regleReponse.getValue() ? "Conforme" : "Non-Conforme";
-                Cell reponseCell = new Cell().add(new Paragraph(reponseText).setTextAlignment(TextAlignment.CENTER));
-                if (regleReponse.getValue()) {
-                    reponseCell.setBackgroundColor(ColorConstants.LIGHT_GRAY);
-                }
-                table.addCell(reponseCell);
-            }
-
-            // Ajout du tableau au document
-            document.add(table);
+            addHeader(document, reponse.getAudit());
+            addAuditInfo(document, reponse.getAudit());
+            addReferential(document, reponse.getAudit());
+            addAuditContext(document, reponse.getAudit());
+            addScopeOfAudit(document);
+            addInterviewees(document, reponse.getAudit().getPersonneRencontresees());
+            addSummaryTable(document, reponse.getReponses());
+            addNonConformitiesSummary(document, reponse.getReponses());
+            addObservationsSummary(document, reponse.getReponses());
+            addImprovementsSummary(document, reponse.getReponses());
 
             document.close();
             return baos.toByteArray();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
 
+
+    private void addSummaryTable(Document document, List<RegleReponse> reponses) {
+        document.add(new Paragraph("Summary").setBold().setFontSize(14));
+
+        Table table = new Table(new float[]{3, 1});
+        table.setWidth(UnitValue.createPercentValue(100));
+
+        table.addCell(new Cell().add(new Paragraph("Category").setBold()));
+        table.addCell(new Cell().add(new Paragraph("Count").setBold()));
+
+        long nonConformCount = reponses.stream().filter(r -> r.getValue() == ReponseType.NON_CONFORME).count();
+        long observationCount = reponses.stream().filter(r -> r.getValue() == ReponseType.OBSERVATION).count();
+        long improvementCount = reponses.stream().filter(r -> r.getValue() == ReponseType.AMELIORATION).count();
+        long totalCorrectiveActions = nonConformCount + observationCount + improvementCount;
+
+        table.addCell("Total number of corrective actions");
+        table.addCell(String.valueOf(totalCorrectiveActions));
+
+        table.addCell("Total number of non-conformities");
+        table.addCell(String.valueOf(nonConformCount));
+
+        table.addCell("Total number of observations");
+        table.addCell(String.valueOf(observationCount));
+
+        table.addCell("Total number of improvements");
+        table.addCell(String.valueOf(improvementCount));
+
+        document.add(table);
+        document.add(new Paragraph("\n"));  // Add some space after the table
+    }
+
+    private void addHeader(Document document, Audit audit) {
+        Table headerTable = new Table(UnitValue.createPercentArray(new float[]{1, 1, 1})).useAllAvailableWidth();
+        headerTable.addCell(new Cell().add(new Paragraph("Audit report\n(Ground Handling Subcontractor)")).setBorder(Border.NO_BORDER));
+        headerTable.addCell(new Cell().add(new Paragraph("")).setBorder(Border.NO_BORDER));
+
+        String auditNumber = audit.getNumeroOrdre() != null ? audit.getNumeroOrdre().toString() : "N/A";
+        String formattedDate = formatDateDDMMYYYY(LocalDateTime.now());
+
+        headerTable.addCell(new Cell().add(new Paragraph("Audit N°" + auditNumber + "\nDate: " +formattedDate))
+                .setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT));
+
+        document.add(headerTable);
+    }
+
+    private String formatDateDDMMYYYY(LocalDateTime dateTime) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        return dateTime.format(formatter);
+    }
+    private void addAuditInfo(Document document, Audit audit) {
+        document.add(new Paragraph("Object: Recurrent audit of " + audit.getEscaleVille() + " based at " + audit.getAeroport())
+                .setBold());
+    }
+
+    private void addReferential(Document document, Audit audit) {
+        Table referentialTable = new Table(UnitValue.createPercentArray(new float[]{2, 1})).useAllAvailableWidth();
+        referentialTable.addCell(new Cell().add(new Paragraph("Referential\nNational Regulation\nRAM Procedures\nGround Handling Audit Check-list")));
+        referentialTable.addCell(new Cell().add(new Paragraph("Entity:\n" + audit.getEscaleVille())));
+        document.add(referentialTable);
+    }
+
+    private void addAuditContext(Document document, Audit audit) {
+        document.add(new Paragraph("The recurrent audit of the handler " + audit.getHandlingProvider() + " is part of the process of the supervision of the handling outsourced by Royal Air Maroc."));
+        document.add(new Paragraph("The audit took place on " + audit.getEscaleVille() + " at the office of the subcontractor of ground handling, which is located at " + audit.getAeroport() + " Airport."));
+    }
+
+    private void addScopeOfAudit(Document document) {
+        document.add(new Paragraph("Scope of audit:").setBold());
+        List<String> scopeItems = Arrays.asList(
+                "Organisation", "Training", "Manual System", "Load Control", "Incident Response Plan",
+                "Passenger Services", "Facilities for Passengers Requiring Special Assistance",
+                "Baggage Services", "Baggage Recovery (Lost & Found)", "GSE Maintenance",
+                "Potable Water & Toilet Services", "Non-Conformities Summary", "Observations Summary"
+        );
+        for (String item : scopeItems) {
+            document.add(new Paragraph("• " + item));
+        }
+    }
+
+    private void addInterviewees(Document document, List<PersonneRencontrees> personnes) {
+        document.add(new Paragraph("Interviewees:").setBold());
+        for (PersonneRencontrees personne : personnes) {
+            document.add(new Paragraph("• " + personne.getFullname() + ": " + personne.getTitle()));
+        }
+    }
+
+    private void addSummary(Document document, List<RegleReponse> reponses) {
+        long nonConformCount = reponses.stream().filter(r -> r.getValue() == ReponseType.NON_CONFORME).count();
+        long observationCount = reponses.stream().filter(r -> r.getValue() == ReponseType.OBSERVATION).count();
+        long improvementCount = reponses.stream().filter(r -> r.getValue() == ReponseType.AMELIORATION).count();
+
+        document.add(new Paragraph("Total number of corrective actions: " + (nonConformCount + observationCount + improvementCount)));
+        document.add(new Paragraph("Total number of non-conformities: " + nonConformCount));
+        document.add(new Paragraph("Total number of observations: " + observationCount));
+        document.add(new Paragraph("Total number of improvements: " + improvementCount));
+    }
+
+    private void addNonConformitiesSummary(Document document, List<RegleReponse> reponses) {
+        document.add(new Paragraph("A. Summary of Non-Conformities:").setBold());
+        Table table = new Table(UnitValue.createPercentArray(new float[]{1, 2, 2})).useAllAvailableWidth();
+        table.addHeaderCell("References");
+        table.addHeaderCell("Non-conformities");
+        table.addHeaderCell("Comments");
+
+        for (RegleReponse reponse : reponses) {
+            if (reponse.getValue() == ReponseType.NON_CONFORME) {
+                table.addCell(reponse.getRegle().getId());
+                table.addCell(reponse.getRegle().getDescription());
+                table.addCell(reponse.getCommentaire());
+            }
+        }
+        document.add(table);
+    }
+
+    private void addObservationsSummary(Document document, List<RegleReponse> reponses) {
+        document.add(new Paragraph("B. Summary of Observations:").setBold());
+        Table table = new Table(UnitValue.createPercentArray(new float[]{1, 2, 2})).useAllAvailableWidth();
+        table.addHeaderCell("References");
+        table.addHeaderCell("Observations");
+        table.addHeaderCell("Comments");
+
+        for (RegleReponse reponse : reponses) {
+            if (reponse.getValue() == ReponseType.OBSERVATION) {
+                table.addCell(reponse.getRegle().getId());
+                table.addCell(reponse.getRegle().getDescription());
+                table.addCell(reponse.getCommentaire());
+            }
+        }
+        document.add(table);
+    }
+
+    private void addImprovementsSummary(Document document, List<RegleReponse> reponses) {
+        document.add(new Paragraph("C. Total number of improvements:").setBold());
+        Table table = new Table(UnitValue.createPercentArray(new float[]{1, 2, 2})).useAllAvailableWidth();
+        table.addHeaderCell("References");
+        table.addHeaderCell("Improvements");
+        table.addHeaderCell("Comments");
+
+        for (RegleReponse reponse : reponses) {
+            if (reponse.getValue() == ReponseType.AMELIORATION) {
+                table.addCell(reponse.getRegle().getId());
+                table.addCell(reponse.getRegle().getDescription());
+                table.addCell(reponse.getCommentaire());
+            }
+        }
+        document.add(table);
+    }
+
+    private String formatDate(LocalDate date) {
+        return date != null ? date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "Non spécifié";
+    }
+    private String getReponseText(ReponseType value) {
+        switch (value) {
+            case CONFORME:
+                return "Conforme";
+            case NON_CONFORME:
+                return "Non-Conforme";
+            case OBSERVATION:
+                return "Observation";
+            case AMELIORATION:
+                return "Amélioration";
+            default:
+                return "Inconnu";
+        }
+    }
+
+    private com.itextpdf.kernel.colors.Color getReponseColor(ReponseType value) {
+        switch (value) {
+            case CONFORME:
+                return ColorConstants.LIGHT_GRAY;
+            case NON_CONFORME:
+                return ColorConstants.PINK;
+            case OBSERVATION:
+                return ColorConstants.YELLOW;
+            case AMELIORATION:
+                return ColorConstants.BLUE;
+            default:
+                return ColorConstants.WHITE;
+        }
+    }
     public byte[] generatePdfBytesForReponse(Reponse reponse) {
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -157,29 +301,30 @@ public class PdfService {
                     .setMarginBottom(20));
 
             // Filter non-conform rules
-            List<RegleReponse> nonConformRules = reponse.getReponses().stream()
-                    .filter(r -> !r.getValue())
+            List<RegleReponse> nonConformAndObservations = reponse.getReponses().stream()
+                    .filter(r -> r.getValue() == ReponseType.NON_CONFORME || r.getValue() == ReponseType.OBSERVATION)
                     .collect(Collectors.toList());
 
-            if (!nonConformRules.isEmpty()) {
-                // Add a table for non-conform rules
-                Table table = new Table(UnitValue.createPercentArray(new float[]{1})).useAllAvailableWidth();
+            if (!nonConformAndObservations.isEmpty()) {
+                // Add a table for non-conform rules and observations
+                Table table = new Table(UnitValue.createPercentArray(new float[]{1, 1})).useAllAvailableWidth();
 
                 // Header en gras
-                table.addHeaderCell(new Cell().add(new Paragraph("Action Corrective")
-                        .setBold()
-                        .setTextAlignment(TextAlignment.CENTER)));
+                table.addHeaderCell(new Cell().add(new Paragraph("Type").setBold().setTextAlignment(TextAlignment.CENTER)));
+                table.addHeaderCell(new Cell().add(new Paragraph("Action Corrective").setBold().setTextAlignment(TextAlignment.CENTER)));
 
                 // Rows corrective actions
-                for (RegleReponse regleReponse : nonConformRules) {
+                for (RegleReponse regleReponse : nonConformAndObservations) {
                     Regle regle = regleReponse.getRegle();
+                    table.addCell(new Cell().add(new Paragraph(getReponseText(regleReponse.getValue()))
+                            .setTextAlignment(TextAlignment.CENTER)));
                     table.addCell(new Cell().add(new Paragraph(regle.getActionCorrective())
                             .setTextAlignment(TextAlignment.CENTER)));
                 }
 
                 document.add(table);
             } else {
-                document.add(new Paragraph("Aucune règle non conforme trouvée.")
+                document.add(new Paragraph("Aucune règle non conforme ou observation trouvée.")
                         .setTextAlignment(TextAlignment.CENTER));
             }
 
@@ -208,14 +353,8 @@ public class PdfService {
         }
     }
 
-    public RapportAudite savePdfToRapportAudite(byte[] pdfBytes, String filename) {
-        RapportAudite rapportAudite = new RapportAudite();
-        rapportAudite.setId(ObjectId.get().toHexString());
-        rapportAudite.setNom(filename);
-        rapportAudite.setContenu(pdfBytes);
 
-        return rapportAuditeRepository.save(rapportAudite);
-    }
+
 
     private String formatDate(Object date) {
         if (date == null) {

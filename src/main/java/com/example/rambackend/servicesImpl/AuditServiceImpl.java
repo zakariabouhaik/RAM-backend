@@ -1,16 +1,17 @@
 package com.example.rambackend.servicesImpl;
 
-import com.example.rambackend.entities.Audit;
-import com.example.rambackend.entities.Formulaire;
-import com.example.rambackend.entities.Utilisateur;
+import com.example.rambackend.entities.*;
 import com.example.rambackend.repository.AuditRepository;
 import com.example.rambackend.repository.FormulaireRepository;
 import com.example.rambackend.repository.UserRepository;
 import com.example.rambackend.services.AuditService;
 import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,6 +28,7 @@ public class AuditServiceImpl implements AuditService {
     @Autowired
     private KeycloakServiceImpl keycloakService;
 
+    private static final Logger logger = LoggerFactory.getLogger(AuditServiceImpl.class);
 
     @Override
     public Audit saveAudit(Audit audit) {
@@ -37,6 +39,11 @@ public class AuditServiceImpl implements AuditService {
                 .flatMap(utilisateur -> {
                     audit.setFormulaire(formulaire);
                     audit.setAuditeur(utilisateur);
+                    Long lastOrderNumber = auditRepository.findTopByOrderByNumeroOrdreDesc()
+                            .map(Audit::getNumeroOrdre)
+                            .orElse(0L);
+
+                    audit.setNumeroOrdre(lastOrderNumber + 1);
                     Audit savedAudit = auditRepository.save(audit);
 
                     String message = "Vous avez été choisi pour effectuer un audit à " + audit.getEscaleVille() + " du " + audit.getDateDebut() + " au " + audit.getDateFin();
@@ -104,4 +111,39 @@ public class AuditServiceImpl implements AuditService {
     public List<Audit> findAuditsByAuditeId(String auditeId) {
         return auditRepository.findByAuditeId(auditeId);
     }
+
+    @Override
+    public Audit saveGeneralitie(String id, Generalities generalities) {
+        Audit audit= getAuditById(id);
+        audit.setGeneralities(generalities);
+        return auditRepository.save(audit);
+    }
+
+    @Override
+    public Audit sendGeneralities(String id) {
+        Audit audit = getAuditById(id);
+        if(audit.getGeneralities()==null){
+            throw new IllegalStateException("Generalities must be saved before sending");
+        }
+        audit.setGeneralitiesSent(true);
+        return auditRepository.save(audit);
+    }
+
+    @Override
+    public Audit savePersonnesRencontrees(String id, List<PersonneRencontrees> personnes) {
+        logger.info("Saving personnes rencontrees for audit id: {}", id);
+        logger.info("Personnes to save: {}", personnes);
+
+        Audit audit = getAuditById(id);
+        if (audit.getPersonneRencontresees() == null) {
+            audit.setPersonneRencontresees(new ArrayList<>());
+        }
+        audit.getPersonneRencontresees().addAll(personnes);
+
+        Audit savedAudit = auditRepository.save(audit);
+        logger.info("Saved audit with updated personnes rencontrees: {}", savedAudit);
+
+        return savedAudit;
+    }
+
 }

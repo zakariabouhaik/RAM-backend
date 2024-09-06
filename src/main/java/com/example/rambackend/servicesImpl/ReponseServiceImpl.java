@@ -53,6 +53,8 @@ public class ReponseServiceImpl implements ReponseService {
                     RegleReponse existingRegleReponse = existingReponses.get(newRegleReponse.getRegle().getId());
                     if (existingRegleReponse != null) {
                         existingRegleReponse.setValue(newRegleReponse.getValue());
+                        existingRegleReponse.setNonConformeLevel(newRegleReponse.getNonConformeLevel());
+                        existingRegleReponse.setCommentaire(newRegleReponse.getCommentaire());
                     } else {
                         Regle fullRegle = regleRepository.findById(newRegleReponse.getRegle().getId())
                                 .orElseThrow(() -> new EntityNotFoundException("Regle not found with id: " + newRegleReponse.getRegle().getId()));
