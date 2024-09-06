@@ -13,8 +13,6 @@ public class Regle {
         @Id
         private String id;
         private String description;
-
-
         private String actionCorrective;
 
 

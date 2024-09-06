@@ -6,10 +6,13 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AuditRepository extends MongoRepository<Audit, String> {
     List<Audit> findByAuditeurId(String auditeurId);
     List<Audit> findByAuditeId(String auditeId);
+    Optional<Audit> findTopByOrderByNumeroOrdreDesc();
+
 
 }
