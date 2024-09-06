@@ -139,7 +139,7 @@ public class AuditController {
     }
 
     @PutMapping("/{auditId}/audite")
-    public ResponseEntity<Audit> updateAudite(@PathVariable String auditId, @RequestBody Utilisateur auditeDTO,@RequestParam String Fullname, @RequestParam LocalDate localDate) {
+    public ResponseEntity<Audit> updateAudite(@PathVariable String auditId, @RequestBody Utilisateur auditeDTO,  @RequestParam LocalDate localDate) {
         Audit audit = auditService.getAuditById(auditId);
         if (audit == null) {
             return ResponseEntity.notFound().build();
@@ -156,11 +156,10 @@ public class AuditController {
         }
 
         // Mise à jour des champs de l'audité
-        audite.setFullname(Fullname);
-        audite.setEmail(auditeDTO.getEmail());
+
         audite.setEmploi(auditeDTO.getEmploi());
         audite.setPhonenumber(auditeDTO.getPhonenumber());
-        audite.setRole(UserRole.AUDITE);
+
 
         audit.setAuditeregistred(true);
 
