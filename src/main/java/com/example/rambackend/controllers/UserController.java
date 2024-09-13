@@ -298,4 +298,25 @@ public class UserController {
                     return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of()));
                 });
     }
+
+
+
+    @PutMapping("/{id}/deactivate")
+    public Mono<ResponseEntity<String>> deactivateAccount(@PathVariable String id) {
+        return keycloakService.deactivateAccount(id)
+                .map(success -> {
+                    if (success) {
+                        return ResponseEntity.ok("Account deactivated successfully");
+                    } else {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body("Failed to deactivate account");
+                    }
+                })
+                .onErrorResume(e -> {
+                    System.err.println("Error deactivating account: " + e.getMessage());
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body("Error occurred while deactivating account"));
+                });
+    }
+
 }
