@@ -186,19 +186,30 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
             deactivateAccount(userId);
         }
     }
-    private void deactivateAccount(String userId) {
-        getAdminToken()
-                .flatMap(token -> webClient.put()
-                        .uri("/admin/realms/RAM/users/{id}", userId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(Map.of("enabled", false))
-                        .retrieve()
-                        .bodyToMono(Void.class))
-                .subscribe(
-                        null,
-                        error -> System.err.println("Error deactivating account: " + error.getMessage())
-                );
+    public Mono<Boolean> deactivateAccount(String userId) {
+        return getAdminToken()
+                .flatMap(token -> {
+                    Map<String, Object> userUpdate = new HashMap<>();
+                    userUpdate.put("enabled", false);
+
+                    return webClient.put()
+                            .uri("/admin/realms/RAM/users/{id}", userId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(userUpdate)
+                            .retrieve()
+                            .bodyToMono(Void.class)
+                            .thenReturn(true)
+                            .onErrorResume(WebClientResponseException.class, e -> {
+                                System.err.println("Error deactivating user: " + e.getResponseBodyAsString());
+                                return Mono.just(false);
+                            });
+                })
+                .onErrorResume(error -> {
+                    System.err.println("Error deactivating user in Keycloak: " + error.getMessage());
+                    error.printStackTrace();
+                    return Mono.just(false);
+                });
     }
 
 
