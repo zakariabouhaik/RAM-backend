@@ -208,11 +208,16 @@ public class UserController {
                     // Decode the access token to get the user ID
                     String userId = JWT.decode(accessToken).getSubject();
 
+
                     return keycloakService.getIdMongoByUserId(userId)
-                            .map(idMongo -> {
-                                loginData.put("idMongo", idMongo);
-                                return ResponseEntity.ok(loginData);
-                            })
+                            .flatMap(idMongo ->
+                                    keycloakService.getUserRole(userId)
+                                            .map(role -> {
+                                                loginData.put("idMongo", idMongo);
+                                                loginData.put("role", role);
+                                                return ResponseEntity.ok(loginData);
+                                            })
+                            )
                             .defaultIfEmpty(ResponseEntity.ok(loginData));
                 })
                 .onErrorResume(e -> Mono.just(ResponseEntity.badRequest().body(Map.of("error", e.getMessage()))));
