@@ -212,6 +212,28 @@ public KeycloakServiceImpl(WebClient.Builder webClientBuilder){
                 });
     }
 
+    public Mono<String> getUserRole(String userId) {
+        return getAdminToken()
+                .flatMap(token -> webClient.get()
+                        .uri("/admin/realms/RAM/users/{id}", userId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve()
+                        .bodyToMono(Map.class)
+                        .map(userDetails -> {
+                            Map<String, List<String>> attributes = (Map<String, List<String>>) userDetails.get("attributes");
+                            if (attributes != null && attributes.containsKey("role")) {
+                                List<String> roles = attributes.get("role");
+                                return !roles.isEmpty() ? roles.get(0) : null;
+                            }
+                            return null;
+                        })
+                )
+                .onErrorResume(e -> {
+                    System.err.println("Error fetching user role for user " + userId + ": " + e.getMessage());
+                    return Mono.empty();
+                });
+    }
+
 
     public Mono<String> createUser(String email, String fullname,String IdMongo) {
         return getAdminToken()
